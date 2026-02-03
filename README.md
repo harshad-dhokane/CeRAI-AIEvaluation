@@ -794,5 +794,5 @@ Use these login credentials:
 
 ## How the AI Evaluation Tool Came to Life
 
-<video controls src="screenshots/AIEvalTool.mp4"></video>
+![AI Eval Tool Evolution](screenshots/AIEvalTool.gif)
 
