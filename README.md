@@ -508,7 +508,7 @@ Replace the placeholder values with your actual target configuration details. Th
    ```
 ---
 ## 5. **Getting Started**
-To getting started with tool following steps are provided for basics, for detailed documentation [click here](docs/AI_Evaluation_Tool_Docementation.pdf).
+To getting started with tool following steps are provided for basics, for detailed documentation [click here](docs/AI_Evaluation_Tool_Documentation.pdf).
 ### **AI Evaluation Tool**
 ---
 #### 5.1.1 **Import Test Data into Database**
@@ -791,3 +791,9 @@ Use these login credentials:
 | Viewer | `viewer` | `viewer123` |
 
 ---
+
+## How the AI Evaluation Tool Came to Life
+
+![AI Eval Tool Evolution](screenshots/AIEvalTool.gif)
+
+<center> Made with <a href="https://gource.io/">Gource</a> </center>
