@@ -791,3 +791,8 @@ Use these login credentials:
 | Viewer | `viewer` | `viewer123` |
 
 ---
+
+## How the AI Evaluation Tool Came to Life
+
+<video controls src="screenshots/AIEvalTool.mp4"></video>
+
