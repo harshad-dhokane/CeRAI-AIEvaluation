@@ -53,7 +53,7 @@ ddgs
 sqlalchemy-utils
 
 pandas
-streamlit
+streamlit>=1.32
 python-dotenv
 Jinja2
 plotly
