@@ -15,7 +15,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(__file__) + '/..')
 
 from data import Prompt, Language, Domain, Response, TestCase, TestPlan, \
-    Strategy, Metric, LLMJudgePrompt, Target, Conversation, Run, RunDetail
+    Strategy, Metric, LLMJudgePrompt, Target, Conversation, Run, RunDetail, TimelineEvent
 from .tables import Base, Languages, Domains, Metrics, Responses, TestCases, \
     TestPlans, Prompts, Strategies, LLMJudgePrompts, Targets, Conversations, \
         TestRuns, TestRunDetails, TestPlanMetricMapping, TargetLanguages
@@ -2213,6 +2213,80 @@ class DB:
         if s1 == s2:
             return 0
         return 1 if s1 > s2 else -1
+
+
+
+    def get_all_runs(self, domain=None, target=None, status=None):
+
+        with self.Session() as session:
+
+            sql = (
+
+                select(TestRuns)
+
+                .outerjoin(Targets, TestRuns.target_id == Targets.target_id)
+
+                .outerjoin(Domains, Targets.domain_id == Domains.domain_id)
+
+            )
+
+
+
+            if target:
+
+                sql = sql.where(Targets.target_name == target)
+
+
+
+            if domain:
+
+                sql = sql.where(Domains.domain_name == domain)
+
+                # OR if frontend sends domain_id:
+
+                # sql = sql.where(Domains.domain_id == domain)
+
+
+
+            if status:
+
+                sql = sql.where(TestRuns.status == status)
+
+
+
+            results = session.execute(sql).scalars().all()
+
+
+
+            runs = []
+
+            for r in results:
+
+                runs.append(
+
+                    Run(
+
+                        run_id=r.run_id,
+
+                        run_name=r.run_name,
+
+                        target=r.target.target_name if r.target else None,
+
+                        target_id=r.target_id,
+
+                        start_ts=r.start_ts.isoformat(),
+
+                        end_ts=r.end_ts.isoformat() if r.end_ts else None,
+
+                        status=str(r.status),
+
+                    )
+
+                )
+
+
+
+            return runs
     
     def get_run_by_name(self, run_name: str) -> Optional[Run]:
         """
@@ -3942,3 +4016,44 @@ class DB:
 
             session.commit()
             return True
+
+        
+    def get_run_timeline(self, run_name: str) -> list[TimelineEvent]:
+        with self.Session() as session:
+            sql = (
+                select(Conversations)
+                .join(TestRunDetails)
+                .join(TestRuns)
+                .where(TestRuns.run_name == run_name)
+            )
+
+            results = session.execute(sql).scalars().all()
+
+            timeline: list[TimelineEvent] = []
+
+            for conv in results:
+                detail = conv.detail
+
+                timeline.append(
+                    TimelineEvent(
+                        conversation_id=conv.conversation_id,
+                        run_name=detail.run.run_name,
+                        testcase_name=detail.testcase.testcase_name,
+                        metric_name=detail.metric.metric_name,
+                        plan_name=detail.plan.plan_name,
+
+                        prompt_ts=conv.prompt_ts.isoformat() if conv.prompt_ts else None,
+                        response_ts=conv.response_ts.isoformat() if conv.response_ts else None,
+                        evaluation_ts=conv.evaluation_ts.isoformat() if conv.evaluation_ts else None,
+
+                        evaluation_score=conv.evaluation_score,
+                        evaluation_reason=conv.evaluation_reason,
+                    )
+                )
+
+            # 🔥 timeline ordering logic
+            timeline.sort(
+                key=lambda x: x.prompt_ts or x.response_ts or x.evaluation_ts or ""
+            )
+
+            return timeline
