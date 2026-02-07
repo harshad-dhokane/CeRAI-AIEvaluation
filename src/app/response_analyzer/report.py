@@ -189,7 +189,7 @@ def main():
     run_written = False
 
     # ============================================================
-    # PLAN → METRIC → TESTCASE LEVEL ROWS
+    # PLAN → METRIC LEVEL ROWS (DISTINCT METRICS ONLY)
     # ============================================================
 
     for plan_name, metrics in score_card.items():
@@ -208,50 +208,50 @@ def main():
             score_card[plan_name][metric_name]["plan_summary"] = plan_summary
             score_card[plan_name][metric_name]["run_summary"] = run_summary
 
-            for tc_id, tc_score in metric_data["Testcases"].items():
+            # Use average score for the metric (not individual testcase scores)
+            avg_score = metric_data.get("Average", "")
 
-                if multi_plan:
-                    table.add_row(
-                        plan_name,
-                        metric_name,
-                        str(tc_score),
-                        metric_summary,
-                        plan_summary if not plan_written else "",
-                        run_summary if not run_written else ""
-                    )
-                else:
-                    table.add_row(
-                        plan_name,
-                        metric_name,
-                        str(tc_score),
-                        metric_summary,
-                        plan_summary if not plan_written else ""
-                    )
+            if multi_plan:
+                table.add_row(
+                    plan_name,
+                    metric_name,
+                    str(avg_score),
+                    metric_summary,
+                    plan_summary if not plan_written else "",
+                    run_summary if not plan_written else ""
+                )
+            else:
+                table.add_row(
+                    plan_name,
+                    metric_name,
+                    str(avg_score),
+                    metric_summary,
+                    plan_summary if not plan_written else ""
+                )
 
-                plan_written = True
-                run_written = True
+            plan_written = True
 
 
     print(json.dumps(score_card, indent=4))
     Console().print(table)
     
     #@NOTE : Generate PDF report using the score_card and run_summary.
-    # run = dict(db.get_run_by_name(run_name=args.run_name))  # Refresh run data from DB
-    # target_name = run['target']
-    # run_name = run['run_name']
-    # date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # total_testcases = sum(len(metrics[metric]["Testcases"]) for metrics in score_card.values() for metric in metrics)
+    run = dict(db.get_run_by_name(run_name=args.run_name))  # Refresh run data from DB
+    target_name = run['target']
+    run_name = run['run_name']
+    date = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    total_testcases = sum(len(metrics[metric]["Testcases"]) for metrics in score_card.values() for metric in metrics)
 
-    # filename = EvaluationReport.create_report(
-    #     target_name=target_name,
-    #     run_name=run_name,
-    #     date=date,
-    #     total_testcases=total_testcases,
-    #     target_summary= run_summary,
-    #     score_card=score_card
-    # )
-    # logger.info(f"PDF Report generated for target: '{target_name}', run: '{run_name}', date: '{date}'")
-    # logger.info(f"Report saved to: {filename}")
+    filename = EvaluationReport.create_report(
+        target_name=target_name,
+        run_name=run_name,
+        date=date,
+        total_testcases=total_testcases,
+        target_summary= run_summary,
+        score_card=score_card
+    )
+    logger.info(f"PDF Report generated for target: '{target_name}', run: '{run_name}', date: '{date}'")
+    logger.info(f"Report saved to: {filename}")
     
 if __name__ == "__main__":
     main()
