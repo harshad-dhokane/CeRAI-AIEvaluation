@@ -156,14 +156,26 @@ def main():
         # capture the score computed for the testcase.
         score_card[detail.plan_name][detail.metric_name]["Testcases"][detail.testcase_name] = conversation.evaluation_score
 
-    table = Table(title=f"Response Analysis Report for Run '{run.run_name}'")
+    # ============================================================
+    # CHECK HOW MANY REAL PLANS EXIST FIRST
+    # ============================================================
 
+    real_plans = [p for p in score_card.keys() if p != "PlanSummary"]
+    multi_plan = len(real_plans) > 1
+
+    # ============================================================
+    # TABLE DEFINITION – COLUMN APPEARS ONLY IF MULTI PLAN
+    # ============================================================
+
+    table = Table(title=f"Response Analysis Report for Run '{run.run_name}'")
     table.add_column("Plan Name", style="cyan", no_wrap=True)
     table.add_column("Metric Name", style="magenta")
     table.add_column("Score (0-1)", style="green")
     table.add_column("Metric Summary", style="white")
     table.add_column("Plan Summary", style="yellow")
-    table.add_column("Run Summary", style="blue")
+
+    if multi_plan:
+        table.add_column("Run Summary", style="blue")
 
     # ----- Average calculation -----
     for plan in score_card.keys():
@@ -172,17 +184,19 @@ def main():
             avg_score = round(sum(scores) / len(scores), 2) if scores else None
             score_card[plan][metric]["Average"] = avg_score
 
-    # ----- Generate Run Summary -----
-    run_summary = OllamaConnect.get_run_summary(score_card)
+    # ----- Generate Run Summary only if required -----
+    run_summary = OllamaConnect.get_run_summary(score_card) if multi_plan else ""
     run_written = False
 
-    # ----- Plan → Metric → Testcase Level Rows -----
+    # ============================================================
+    # PLAN → METRIC → TESTCASE LEVEL ROWS
+    # ============================================================
+
     for plan_name, metrics in score_card.items():
         if plan_name == "PlanSummary":
             continue
         plan_summary = OllamaConnect.get_single_plan_summary(plan_name, metrics)
-        plan_written = False      # resets for each plan
-
+        plan_written = False
         for metric_name, metric_data in metrics.items():
             metric_summary = OllamaConnect.get_metric_summary(
                 metric_name,
@@ -195,21 +209,32 @@ def main():
             score_card[plan_name][metric_name]["run_summary"] = run_summary
 
             for tc_id, tc_score in metric_data["Testcases"].items():
-                table.add_row(
-                    plan_name,
-                    metric_name,
-                    str(tc_score),
-                    metric_summary,
-                    plan_summary if not plan_written else "",   # only first time
-                    run_summary if not run_written else ""
-                )
 
-                plan_written = True     # lock after first row of this plan
-                run_written = True      # run summary still only once overall
+                if multi_plan:
+                    table.add_row(
+                        plan_name,
+                        metric_name,
+                        str(tc_score),
+                        metric_summary,
+                        plan_summary if not plan_written else "",
+                        run_summary if not run_written else ""
+                    )
+                else:
+                    table.add_row(
+                        plan_name,
+                        metric_name,
+                        str(tc_score),
+                        metric_summary,
+                        plan_summary if not plan_written else ""
+                    )
+
+                plan_written = True
+                run_written = True
+
 
     print(json.dumps(score_card, indent=4))
     Console().print(table)
-
+    
     #@NOTE : Generate PDF report using the score_card and run_summary.
     # run = dict(db.get_run_by_name(run_name=args.run_name))  # Refresh run data from DB
     # target_name = run['target']
