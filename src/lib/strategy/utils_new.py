@@ -266,10 +266,16 @@ class OllamaConnect:
             return "Could not get a proper reasoning for the score."
         
     @staticmethod
-    def get_metric_summary(metric_name: str, scores: float, **kwargs):
+    def get_metric_summary(metric_name: str, scores, **kwargs):
+        # allow either single float or list
+        if isinstance(scores, (list, tuple)):
+            score_text = ", ".join(str(s) for s in scores)
+        else:
+            score_text = str(scores)
+
         prompt = OllamaConnect.dflt_vals.metric_summary_prompt.format(
             metric=metric_name,
-            scores=scores,
+            scores=score_text,
             add_info=kwargs.get("add_info", "")
         )
 
@@ -278,23 +284,21 @@ class OllamaConnect:
             OllamaConnect.dflt_vals.reqd_flds
         )
 
-        final_summary = ""
-
-        if len(responses) > 0:
-            summaries = [r["summary"] for r in responses]
-
-            if len(summaries) == 1:
-                return f"{summaries[0]}"
-
-            for i, s in enumerate(summaries):
-                if i == 0:
-                    final_summary += f"Summary {i+1} : {s}"
-                else:
-                    final_summary += f"\n\n Summary {i+1} : {s}"
-
-            return final_summary
-        else:
+        if not responses:
             return "Could not generate metric summary."
+
+        summaries = [r["summary"] for r in responses]
+
+        if len(summaries) == 1:
+            return summaries[0]
+
+        final_summary = ""
+        for i, s in enumerate(summaries):
+            prefix = f"Summary {i+1} : {s}"
+            final_summary += prefix if i == 0 else f"\n\n{prefix}"
+
+        return final_summary
+
 
     @staticmethod
     def get_single_plan_summary(plan_name: str, metrics: dict, **kwargs):
@@ -302,10 +306,14 @@ class OllamaConnect:
         overview = []
 
         for metric, data in metrics.items():
+
+            # collect all testcase summaries for this metric
+            tc_summaries = list(data.get("tc_summary", {}).values())
+
             overview.append({
                 "metric": metric,
-                "average": data.get("Average"),
-                "cases": len(data.get("Testcases", {}))
+                "testcase_count": len(data.get("Testcases", {})),
+                "metric_summaries": tc_summaries
             })
 
         prompt = OllamaConnect.dflt_vals.plan_summary_prompt.format(
@@ -326,13 +334,26 @@ class OllamaConnect:
         overview = []
 
         for plan, metrics in score_card.items():
+
+            # skip structural nodes
+            if not isinstance(metrics, dict):
+                continue
+
+            plan_level = {
+                "plan": plan,
+                "metrics": []
+            }
+
             for metric, data in metrics.items():
-                overview.append({
-                    "plan": plan,
+
+                plan_level["metrics"].append({
                     "metric": metric,
-                    "average": data.get("Average"),
-                    "cases": len(data.get("Testcases", {}))
+                    "testcase_count": len(data.get("Testcases", {})),
+                    "metric_summaries": list(data.get("tc_summary", {}).values()),
+                    "plan_summary": data.get("plan_summary")
                 })
+
+            overview.append(plan_level)
 
         prompt = OllamaConnect.dflt_vals.run_summary_prompt.format(
             overview=json.dumps(overview, indent=2),
@@ -352,6 +373,7 @@ class OllamaConnect:
         return summaries[0] if len(summaries) == 1 else "\n\n".join(
             f"Summary {i+1} : {s}" for i, s in enumerate(summaries)
         )
+
 
 # The EvaluationReport class is responsible for generating a PDF report of the evaluation results. 
 class EvaluationReport:
@@ -495,7 +517,7 @@ class EvaluationReport:
                         plan_name,
                         metric_name,
                         str(tc_score),                     # individual score
-                        metric_data.get("summary", ""),
+                        metric_data.get("tc_summary", {}).get(tc_id, ""),
                         metric_data.get("plan_summary", "") if first else ""
                     ])
                     first = False
@@ -508,7 +530,7 @@ class EvaluationReport:
         cls,
         target_name: str,
         run_name: str,
-        date: str,
+        timestamp: str,
         total_testcases: int,
         target_summary: str,
         score_card: dict,
@@ -540,7 +562,7 @@ class EvaluationReport:
         kv = [
             ("Target Name", target_name),
             ("Run Name", run_name),
-            ("Date", date),
+            ("Timestamp", timestamp),
             ("Total Test Cases", str(total_testcases)),
         ]
 

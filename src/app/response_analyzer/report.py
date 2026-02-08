@@ -177,20 +177,12 @@ def main():
     if multi_plan:
         table.add_column("Run Summary", style="blue")
 
-    # ----- Average calculation -----
-    for plan in score_card.keys():
-        for metric in score_card[plan].keys():
-            scores = list(score_card[plan][metric]["Testcases"].values())
-            avg_score = round(sum(scores) / len(scores), 2) if scores else None
-            score_card[plan][metric]["Average"] = avg_score
-
-    # ----- Generate Run Summary only if required -----
-    run_summary = OllamaConnect.get_run_summary(score_card) if multi_plan else ""
-    run_written = False
-
     # ============================================================
     # PLAN → METRIC → TESTCASE LEVEL ROWS
     # ============================================================
+
+    run_summary = OllamaConnect.get_run_summary(score_card) if multi_plan else ""
+    run_written = False
 
     for plan_name, metrics in score_card.items():
         if plan_name == "PlanSummary":
@@ -198,23 +190,24 @@ def main():
         plan_summary = OllamaConnect.get_single_plan_summary(plan_name, metrics)
         plan_written = False
         for metric_name, metric_data in metrics.items():
-            metric_summary = OllamaConnect.get_metric_summary(
-                metric_name,
-                scores=metric_data.get("Average", "")
-            )
-
-            # store back
-            score_card[plan_name][metric_name]["summary"] = metric_summary
-            score_card[plan_name][metric_name]["plan_summary"] = plan_summary
-            score_card[plan_name][metric_name]["run_summary"] = run_summary
-
-            for tc_id, tc_score in metric_data["Testcases"].items():
+            # Ensure container exists
+            metric_data.setdefault("tc_summary", {})
+            for tc_id, single_score in metric_data["Testcases"].items():
+                metric_summary = OllamaConnect.get_metric_summary(
+                    metric_name,
+                    scores=single_score
+                )
+                # ---- OPTION A HEART ----
+                metric_data["tc_summary"][tc_id] = metric_summary
+                # -----------------------
+                score_card[plan_name][metric_name]["plan_summary"] = plan_summary
+                score_card[plan_name][metric_name]["run_summary"] = run_summary
 
                 if multi_plan:
                     table.add_row(
                         plan_name,
                         metric_name,
-                        str(tc_score),
+                        str(single_score),
                         metric_summary,
                         plan_summary if not plan_written else "",
                         run_summary if not run_written else ""
@@ -223,14 +216,12 @@ def main():
                     table.add_row(
                         plan_name,
                         metric_name,
-                        str(tc_score),
+                        str(single_score),
                         metric_summary,
                         plan_summary if not plan_written else ""
                     )
-
                 plan_written = True
                 run_written = True
-
 
     print(json.dumps(score_card, indent=4))
     Console().print(table)
@@ -239,7 +230,7 @@ def main():
     # run = dict(db.get_run_by_name(run_name=args.run_name))  # Refresh run data from DB
     # target_name = run['target']
     # run_name = run['run_name']
-    # date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # total_testcases = sum(len(metrics[metric]["Testcases"]) for metrics in score_card.values() for metric in metrics)
 
     # # Place reports inside project_root/reports
@@ -249,14 +240,14 @@ def main():
     # filename = EvaluationReport.create_report(
     #     target_name=target_name,
     #     run_name=run_name,
-    #     date=date,
+    #     timestamp=timestamp,
     #     total_testcases=total_testcases,
     #     target_summary= run_summary,
     #     plan_summary=plan_summary,
     #     score_card=score_card,
     #     out_path=os.path.join(reports_folder, f"AI_Evaluation_Report_{target_name}.pdf")
     # )
-    # logger.info(f"PDF Report generated for target: '{target_name}', run: '{run_name}', date: '{date}'")
+    # logger.info(f"PDF Report generated for target: '{target_name}', run: '{run_name}', timestamp: '{timestamp}' with total test cases: {total_testcases}")
     # logger.info(f"Report saved to: {filename}")
     
 if __name__ == "__main__":
