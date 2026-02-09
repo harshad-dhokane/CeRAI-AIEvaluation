@@ -619,7 +619,7 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
         # 🔹 Get testcases count (NO execution here)
 
         else:
-            testcases = db.get_testcases_by_testplan(plan_name=plan_name, n=max_test_cases, lang_name=lang_name, domain_name=domain_name)
+            testcases = db.get_testcases_by_testplan(plan_name=plan_name, n=max_test_cases, lang_names=lang_name, domain_name=domain_name)
             if not testcases:
                 print("No Test cases Found")
                 return

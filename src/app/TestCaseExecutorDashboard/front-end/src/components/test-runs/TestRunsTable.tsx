@@ -125,65 +125,65 @@ const TestRunsTable: React.FC<Props> = ({filters}) => {
               </tr>
             ) : (
               currentRuns.map(run => (
-      <tr
-        key={run.run_id}
-        role="button"
-        className="cursor-pointer"
-        onClick={() => navigate(`/test-runs/${run.run_name}`)}
-      >
-        <td>{run.run_id}</td>
-        <td>{run.run_name}</td>
-        <td>{run.target}</td>
-        <td>{new Date(run.start_ts).toLocaleString()}</td>
-        <td>{run.end_ts ? new Date(run.end_ts).toLocaleString() : "-"}</td>
-        <td>
-          {run.end_ts
-            ? `${Math.round(
-                (new Date(run.end_ts).getTime() -
-                  new Date(run.start_ts).getTime()) / 1000
-              )}s`
-            : "-"}
-        </td>
-        <td>
-          <span
-            className={`badge ${
-              run.status === "PASSED"
-                ? "bg-success"
-                : run.status === "FAILED"
-                ? "bg-danger"
-                : "bg-secondary"
-            }`}
-          >
-            {run.status}
-          </span>
-        </td>
-        <td>{run.domain}</td>
-        <td onClick={e => e.stopPropagation()}>
-          <AppButton
-            label="Report"
-            variant="outline-primary"
-            size="sm"
-            icon="bi-file-earmark-text"
-            onClick={() => {
-              const link = document.createElement("a");
-              link.href = `http://localhost:8000/test-runs/${run.run_name}/evaluation-report`;
-              link.setAttribute(
-                "download",
-                `${run.run_name}-evaluation.xlsx`
-              );
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }}
-          /> 
-        </td>
-      </tr>
-    ))
-  )}
-</tbody>
-  </table>
+                <tr
+                  key={run.run_id}
+                  role="button"
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/test-runs/${run.run_name}`)}
+                >
+                  <td>{run.run_id}</td>
+                  <td>{run.run_name}</td>
+                  <td>{run.target}</td>
+                  <td>{new Date(run.start_ts).toLocaleString()}</td>
+                  <td>{run.end_ts ? new Date(run.end_ts).toLocaleString() : "-"}</td>
+                  <td>
+                    {run.end_ts
+                      ? `${Math.round(
+                          (new Date(run.end_ts).getTime() -
+                            new Date(run.start_ts).getTime()) / 1000
+                        )}s`
+                      : "-"}
+                  </td>
+                  <td>
+                    <span
+                      className={`badge ${
+                        run.status === "PASSED"
+                          ? "bg-success"
+                          : run.status === "FAILED"
+                          ? "bg-danger"
+                          : "bg-secondary"
+                      }`}
+                    >
+                      {run.status}
+                    </span>
+                  </td>
+                  <td>{run.domain}</td>
+                  <td onClick={e => e.stopPropagation()}>
+                    <AppButton
+                      label="Report"
+                      variant="outline-primary"
+                      size="sm"
+                      icon="bi-file-earmark-text"
+                      onClick={() => {
+                        const link = document.createElement("a");
+                        link.href = `http://localhost:8000/test-runs/${run.run_name}/evaluation-report`;
+                        link.setAttribute(
+                          "download",
+                          `${run.run_name}-evaluation.xlsx`
+                        );
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                    /> 
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
   
-</div>
+      </div>
       
       {/* Pagination */}
       {totalPages > 1 && (
