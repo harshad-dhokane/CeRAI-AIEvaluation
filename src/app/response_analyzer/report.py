@@ -187,41 +187,52 @@ def main():
     for plan_name, metrics in score_card.items():
         if plan_name == "PlanSummary":
             continue
+
         plan_summary = OllamaConnect.get_single_plan_summary(plan_name, metrics)
         plan_written = False
-        for metric_name, metric_data in metrics.items():
-            # Ensure container exists
-            metric_data.setdefault("tc_summary", {})
-            for tc_id, single_score in metric_data["Testcases"].items():
-                metric_summary = OllamaConnect.get_metric_summary(
-                    metric_name,
-                    scores=single_score
-                )
-                # ---- OPTION A HEART ----
-                metric_data["tc_summary"][tc_id] = metric_summary
-                # -----------------------
-                score_card[plan_name][metric_name]["plan_summary"] = plan_summary
-                score_card[plan_name][metric_name]["run_summary"] = run_summary
 
-                if multi_plan:
-                    table.add_row(
-                        plan_name,
-                        metric_name,
-                        str(round(single_score, 3)),
-                        metric_summary,
-                        plan_summary if not plan_written else "",
-                        run_summary if not run_written else ""
-                    )
-                else:
-                    table.add_row(
-                        plan_name,
-                        metric_name,
-                        str(round(single_score, 3)),
-                        metric_summary,
-                        plan_summary if not plan_written else ""
-                    )
-                plan_written = True
-                run_written = True
+        for metric_name, metric_data in metrics.items():
+
+            # ---- Aggregate across testcases ----
+            scores = list(metric_data["Testcases"].values())
+
+            if not scores:
+                continue
+
+            metric_score = round(sum(scores) / len(scores), 3)
+
+            metric_summary = OllamaConnect.get_metric_summary(
+                metric_name,
+                scores=scores
+            )
+
+            # store at metric level
+            metric_data["metric_summary"] = metric_summary
+            metric_data["metric_score"] = metric_score
+            metric_data["plan_summary"] = plan_summary
+            metric_data["run_summary"] = run_summary
+
+            # ---- ONE ROW PER METRIC ----
+            if multi_plan:
+                table.add_row(
+                    plan_name,
+                    metric_name,
+                    str(metric_score),
+                    metric_summary,
+                    plan_summary if not plan_written else "",
+                    run_summary if not run_written else ""
+                )
+            else:
+                table.add_row(
+                    plan_name,
+                    metric_name,
+                    str(metric_score),
+                    metric_summary,
+                    plan_summary if not plan_written else ""
+                )
+
+            plan_written = True
+            run_written = True
 
     print(json.dumps(score_card, indent=4))
     Console().print(table)

@@ -267,11 +267,22 @@ class OllamaConnect:
         
     @staticmethod
     def get_metric_summary(metric_name: str, scores, **kwargs):
-        # allow either single float or list
+        """
+        Accepts a list of scores belonging to one metric and produces
+        a single coherent summary at metric level.
+        """
+
+        # Normalize input
         if isinstance(scores, (list, tuple)):
-            score_text = ", ".join(str(s) for s in scores)
+            values = list(scores)
         else:
-            score_text = str(scores)
+            values = [scores]
+
+        # Derive a representative metric score
+        avg_score = round(sum(values) / len(values), 3)
+
+        # Text presented to the model should reflect aggregation
+        score_text = f"Average: {avg_score} from {len(values)} samples"
 
         prompt = OllamaConnect.dflt_vals.metric_summary_prompt.format(
             metric=metric_name,
@@ -289,16 +300,14 @@ class OllamaConnect:
 
         summaries = [r["summary"] for r in responses]
 
+        # Single response: return directly
         if len(summaries) == 1:
             return summaries[0]
 
-        final_summary = ""
-        for i, s in enumerate(summaries):
-            prefix = f"Summary {i+1} : {s}"
-            final_summary += prefix if i == 0 else f"\n\n{prefix}"
-
-        return final_summary
-
+        # Multiple responses: weave them into one narrative
+        return "\n\n".join(
+            f"Summary {i+1} : {s}" for i, s in enumerate(summaries)
+        )
 
     @staticmethod
     def get_single_plan_summary(plan_name: str, metrics: dict, **kwargs):
@@ -383,10 +392,8 @@ class EvaluationReport:
         self.title = title
         self.pagesize = pagesize
         self.margin = margin_mm * mm
-
         self.styles = getSampleStyleSheet()
 
-        # Custom styles
         self.styles.add(
             ParagraphStyle(
                 name="SectionTitle",
@@ -426,8 +433,6 @@ class EvaluationReport:
     def section_title(self, text):
         return Paragraph(text, self.styles["SectionTitle"])
 
-    # -----------------------------------------------------
-
     def body_text(self, text):
         return Paragraph(text, self.styles["Body"])
 
@@ -437,12 +442,13 @@ class EvaluationReport:
         left_w = 40 * mm
         right_w = self.pagesize[0] - 2 * self.margin - left_w
 
-        data = []
-        for k, v in kv_pairs:
-            data.append([
+        data = [
+            [
                 Paragraph(f"<b>{k}:</b>", self.styles["Body"]),
                 Paragraph(str(v), self.styles["Body"])
-            ])
+            ]
+            for k, v in kv_pairs
+        ]
 
         t = Table(data, colWidths=[left_w, right_w], hAlign="LEFT")
 
@@ -459,28 +465,26 @@ class EvaluationReport:
 
     def score_table(self, headers, rows):
         usable_width = self.pagesize[0] - 2 * self.margin
-        # Slightly friendlier proportions for long summaries
-        proportions = [0.13, 0.15, 0.08, 0.36, 0.28]
+
+        proportions = [0.15, 0.18, 0.10, 0.37, 0.20]
         colWidths = [usable_width * p for p in proportions]
-        data = []
-        # Header
-        data.append([
-            Paragraph(f"<b>{h}</b>", self.styles["Body"])
-            for h in headers
-        ])
-        # Rows
+
+        data = [[Paragraph(f"<b>{h}</b>", self.styles["Body"]) for h in headers]]
+
         for r in rows:
             data.append([
                 Paragraph(str(cell), self.styles["Body"])
                 for cell in r
             ])
+
         table = Table(
             data,
             colWidths=colWidths,
             repeatRows=1,
             hAlign="LEFT",
-            splitByRow=1        # allow rows to break across pages
+            splitByRow=1
         )
+
         table.setStyle(TableStyle([
             ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -490,9 +494,9 @@ class EvaluationReport:
             ("TOPPADDING", (0, 0), (-1, -1), 6),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-            # critical for long text
             ("WORDWRAP", (0, 0), (-1, -1), "CJK"),
         ]))
+
         return table
 
     # -----------------------------------------------------
@@ -505,22 +509,31 @@ class EvaluationReport:
             "Metric Summary",
             "Plan Summary"
         ]
+
         rows = []
+
         for plan_name, metrics in score_card.items():
             if plan_name == "PlanSummary":
                 continue
-            first = True
+
+            first_metric = True
+
             for metric_name, metric_data in metrics.items():
-                # iterate over each testcase so metrics can repeat
-                for tc_id, tc_score in metric_data["Testcases"].items():
-                    rows.append([
-                        plan_name,
-                        metric_name,
-                        str(round(tc_score, 3)),                     # individual score
-                        metric_data.get("tc_summary", {}).get(tc_id, ""),
-                        metric_data.get("plan_summary", "") if first else ""
-                    ])
-                    first = False
+
+                metric_score = metric_data.get("metric_score", "")
+                metric_summary = metric_data.get("metric_summary", "")
+                plan_summary = metric_data.get("plan_summary", "")
+
+                rows.append([
+                    plan_name,
+                    metric_name,
+                    str(metric_score),
+                    metric_summary,
+                    plan_summary if first_metric else ""
+                ])
+
+                first_metric = False
+
         return headers, rows
 
     # -----------------------------------------------------
@@ -553,10 +566,6 @@ class EvaluationReport:
 
         story = []
 
-        # ============================================================
-        # EXPERIMENT OVERVIEW
-        # ============================================================
-
         story.append(inst.section_title("Experiment Overview"))
 
         kv = [
@@ -568,10 +577,6 @@ class EvaluationReport:
 
         story.append(inst.key_value_table(kv))
         story.append(Spacer(1, 8))
-
-        # ============================================================
-        # DECIDE WHETHER RUN SUMMARY EXISTS
-        # ============================================================
 
         has_run_summary = any(
             metric.get("run_summary")
@@ -588,33 +593,19 @@ class EvaluationReport:
 
         story.append(inst.section_title(section_title))
 
-        # ============================================================
-        # CONTENT SELECTION LOGIC
-        # ============================================================
-
         if has_run_summary:
             story.append(inst.body_text(target_summary))
-
         elif plan_summary:
             story.append(inst.body_text(plan_summary))
-
         else:
             story.append(inst.body_text("No summary available."))
 
         story.append(Spacer(1, 8))
 
-        # ============================================================
-        # SCORES TABLE
-        # ============================================================
-
         story.append(inst.section_title("Scores Table"))
 
         headers, rows = inst.scorecard_to_table(score_card)
         story.append(inst.score_table(headers, rows))
-
-        # ============================================================
-        # BUILD PDF
-        # ============================================================
 
         doc.build(
             story,
