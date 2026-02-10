@@ -13,15 +13,13 @@ from typing import Optional, List
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 )
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_JUSTIFY
 
 logger = get_logger("utils_new")
 
@@ -394,6 +392,7 @@ class EvaluationReport:
         self.margin = margin_mm * mm
         self.styles = getSampleStyleSheet()
 
+        # Section heading
         self.styles.add(
             ParagraphStyle(
                 name="SectionTitle",
@@ -404,12 +403,27 @@ class EvaluationReport:
             )
         )
 
+        # Left aligned labels for key column
+        self.styles.add(
+            ParagraphStyle(
+                name="BodyLabel",
+                parent=self.styles["BodyText"],
+                fontSize=10,
+                leading=12,
+                alignment=0,        # TA_LEFT
+                spaceAfter=2
+            )
+        )
+
+        # Justified body text
         self.styles.add(
             ParagraphStyle(
                 name="Body",
                 parent=self.styles["BodyText"],
                 fontSize=10,
-                leading=12
+                leading=12,
+                alignment=TA_JUSTIFY,
+                spaceAfter=4
             )
         )
 
@@ -444,7 +458,7 @@ class EvaluationReport:
 
         data = [
             [
-                Paragraph(f"<b>{k}:</b>", self.styles["Body"]),
+                Paragraph(f"<b>{k}:</b>", self.styles["BodyLabel"]),
                 Paragraph(str(v), self.styles["Body"])
             ]
             for k, v in kv_pairs
