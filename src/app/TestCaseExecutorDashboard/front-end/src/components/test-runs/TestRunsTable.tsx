@@ -1,8 +1,6 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import "./TestRunsTable.css";
 import { useNavigate } from "react-router-dom";
-import AppButton from "../common/Button/AppButton";
-import { Pagination } from "react-bootstrap";
 
 // Define the structure of a test run (for future use)
 interface TestRun {
@@ -67,59 +65,32 @@ const TestRunsTable: React.FC<Props> = ({filters}) => {
     pageNumbers.push(i);
   }
   
-  
-  // Apply filters when they change
-  // useEffect(() => {
-  //   if (Object.keys(filters).length === 0) {
-  //     setFilteredRuns(runs);
-  //     return;
-  //   }
-    
-  //   const filtered = runs.filter(run => {
-  //     return Object.entries(filters).every(([key, value]) => {
-  //       if (!value) return true;
-        
-  //       switch(key) {
-  //         case 'domain':
-  //           return run.domain.toLowerCase() === value.toLowerCase();
-  //         case 'target':
-  //           return run.target.toLowerCase() === value.toLowerCase();
-  //         case 'language':
-  //           // Assuming language might be in another property or needs special handling
-  //           return true;
-  //         default:
-  //           return true;
-  //       }
-  //     });
-  //   });
-    
-  //   setFilteredRuns(filtered);
-  // }, [filters, runs]);
   return (
-    <div>
-      <div className="table-responsive table-container mb-3">
-        <table className="table table-hover table-bordered align-middle mb-0">
-          <thead className="table-light">
-            <tr>
-              {headers.map(header => (
-                <th key={header} scope="col">
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
+    <div className="test-runs-table-wrapper">
+      <div className="table-card">
+        <div className="table-responsive">
+          <table className="test-runs-table">
+            <thead>
+              <tr>
+                {headers.map(header => (
+                  <th key={header} scope="col">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={headers.length} className="text-center py-4">
-                  <div className="spinner-border spinner-border-sm me-2" role="status" />
-                  Loading test runs...
+                <td colSpan={headers.length} className="table-loading">
+                  <div className="loading-spinner"></div>
+                  <span>Loading test runs...</span>
                 </td>
               </tr>
             ) : !Array.isArray(currentRuns) || currentRuns.length === 0 ? (
               <tr>
-                <td colSpan={headers.length} className="text-center py-4 text-muted">
+                <td colSpan={headers.length} className="table-empty">
                   No test runs match the selected filters
                 </td>
               </tr>
@@ -128,10 +99,10 @@ const TestRunsTable: React.FC<Props> = ({filters}) => {
                 <tr
                   key={run.run_id}
                   role="button"
-                  className="cursor-pointer"
+                  className="table-row"
                   onClick={() => navigate(`/test-runs/${run.run_name}`)}
                 >
-                  <td>{run.run_id}</td>
+                  <td className="id">{run.run_id}</td>
                   <td>{run.run_name}</td>
                   <td>{run.target}</td>
                   <td>{new Date(run.start_ts).toLocaleString()}</td>
@@ -146,24 +117,23 @@ const TestRunsTable: React.FC<Props> = ({filters}) => {
                   </td>
                   <td>
                     <span
-                      className={`badge ${
-                        run.status === "PASSED"
-                          ? "bg-success"
+                      className={`status-badge ${
+                        run.status === "COMPLETED" || run.status === "PASSED"
+                          ? "status-completed"
+                          : run.status === "RUNNING" || run.status === "IN_PROGRESS"
+                          ? "status-running"
                           : run.status === "FAILED"
-                          ? "bg-danger"
-                          : "bg-secondary"
+                          ? "status-failed"
+                          : "status-default"
                       }`}
                     >
                       {run.status}
                     </span>
                   </td>
                   <td>{run.domain}</td>
-                  <td onClick={e => e.stopPropagation()}>
-                    <AppButton
-                      label="Report"
-                      variant="outline-primary"
-                      size="sm"
-                      icon="bi-file-earmark-text"
+                  <td className="report-cell" onClick={e => e.stopPropagation()}>
+                    <button
+                      className="report-button"
                       onClick={() => {
                         const link = document.createElement("a");
                         link.href = `http://localhost:8000/test-runs/${run.run_name}/evaluation-report`;
@@ -175,53 +145,75 @@ const TestRunsTable: React.FC<Props> = ({filters}) => {
                         link.click();
                         document.body.removeChild(link);
                       }}
-                    /> 
+                    >
+                      <i className="bi bi-file-earmark-text"></i>
+                      <span>Report</span>
+                    </button>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-  
+        </div>
       </div>
-      
+
+      <div className="sticky">
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="d-flex justify-content-center">
-          <Pagination className="mb-0">
-            <Pagination.First 
-              onClick={() => paginate(1)} 
-              disabled={currentPage === 1} 
-            />
-            <Pagination.Prev 
-              onClick={() => paginate(currentPage - 1)} 
-              disabled={currentPage === 1} 
-            />
+        <div className="pagination-wrapper">
+          <div className="pagination-container">
+            <button
+              className="pagination-button"
+              onClick={() => paginate(1)}
+              disabled={currentPage === 1}
+              aria-label="First page"
+            >
+              <i className="bi bi-chevron-double-left"></i>
+            </button>
+            <button
+              className="pagination-button"
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              <i className="bi bi-chevron-left"></i>
+            </button>
             
             {pageNumbers.map(number => (
-              <Pagination.Item 
-                key={number} 
-                active={number === currentPage}
+              <button
+                key={number}
+                className={`pagination-number ${number === currentPage ? 'active' : ''}`}
                 onClick={() => paginate(number)}
+                aria-label={`Page ${number}`}
               >
                 {number}
-              </Pagination.Item>
+              </button>
             ))}
             
-            <Pagination.Next 
-              onClick={() => paginate(currentPage + 1)} 
-              disabled={currentPage === totalPages} 
-            />
-            <Pagination.Last 
-              onClick={() => paginate(totalPages)} 
-              disabled={currentPage === totalPages} 
-            />
-          </Pagination>
+            <button
+              className="pagination-button"
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              <i className="bi bi-chevron-right"></i>
+            </button>
+            <button
+              className="pagination-button"
+              onClick={() => paginate(totalPages)}
+              disabled={currentPage === totalPages}
+              aria-label="Last page"
+            >
+              <i className="bi bi-chevron-double-right"></i>
+            </button>
+          </div>
         </div>
       )}
       
-      <div className="text-muted text-center mt-2">
+      <div className="table-footer">
         Showing {currentRuns.length} of {filteredRuns.length} test runs
+      </div>
       </div>
     </div>
 

@@ -5,7 +5,7 @@ export default class PlanTimeline extends Component {
     return (
       <div>PlanTimeline</div>
     )
-  }0000000000.
+  }
 }
 
 
