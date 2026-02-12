@@ -49,7 +49,6 @@ class BiasDetection(Strategy):
         result = self.classifier(response, return_all_scores=True)[0] 
         result = [result] if isinstance(result, dict) else result  # Ensure it's a list of dicts
         # Pick top prediction
-        print(result)
         top_pred = max(result, key=lambda x: x['score'])
         label = top_pred['label']
         score = top_pred['score']
