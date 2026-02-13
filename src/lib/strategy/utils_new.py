@@ -586,20 +586,26 @@ class EvaluationReport:
     # -----------------------------------------------------
 
     def scorecard_to_table(self, score_card):
+        # Count actual plans (exclude PlanSummary meta key if present)
+        plan_names = [p for p in score_card.keys() if p != "PlanSummary"]
+        multiple_plans = len(plan_names) > 1
+
+        # Build headers dynamically
         headers = [
             "Plan Name",
             "Metric Name",
             "Score (0-1)",
             "Metric Summary",
-            "Plan Summary"
         ]
+
+        if multiple_plans:
+            headers.append("Plan Summary")
 
         rows = []
 
-        for plan_name, metrics in score_card.items():
-            if plan_name == "PlanSummary":
-                continue
+        for plan_name in plan_names:
 
+            metrics = score_card[plan_name]
             first_metric = True
 
             for metric_name, metric_data in metrics.items():
@@ -608,17 +614,23 @@ class EvaluationReport:
                 metric_summary = metric_data.get("metric_summary", "")
                 plan_summary = metric_data.get("plan_summary", "")
 
-                rows.append([
+                row = [
                     plan_name,
                     metric_name,
                     str(metric_score),
                     metric_summary,
-                    plan_summary if first_metric else ""
-                ])
+                ]
+
+                # Only include plan summary column if multiple plans exist
+                if multiple_plans:
+                    row.append(plan_summary if first_metric else "")
+
+                rows.append(row)
 
                 first_metric = False
 
         return headers, rows
+
 
     # -----------------------------------------------------
 
