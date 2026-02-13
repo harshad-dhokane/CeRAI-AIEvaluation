@@ -69,5 +69,6 @@ matplotlib
 scipy
 seaborn
 bert-extractive-summarizer
+pkg_resources
 
 mariadb
