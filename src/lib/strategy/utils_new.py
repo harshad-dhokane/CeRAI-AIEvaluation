@@ -31,7 +31,12 @@ class FileLoader:
     @staticmethod
     def _load_env_vars(run_file_path:str):
         env_path = os.path.join(os.path.dirname(run_file_path), '.env')
-        load_dotenv(env_path)
+        # check if the .env file exists
+        if not os.path.exists(env_path):
+            logger.error(f"Could not find the .env file at path : {env_path}. Please make sure to create one and add the required environment variables.")
+            exit(1)
+        else:
+            load_dotenv(env_path)
     
     @staticmethod
     def _load_file_content(run_file_path:str, req_folder_path:str = "", file_name:str = "", **kwargs):
