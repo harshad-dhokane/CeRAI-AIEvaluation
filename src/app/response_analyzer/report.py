@@ -23,7 +23,7 @@ def main():
     logger = get_logger(__name__)
 
     parser = argparse.ArgumentParser(description="AI Evaluation Tool :: Response Analysis Report Generator")
-    parser.add_argument("--config", dest='config', default="config.json", help="Path to the config file")
+    parser.add_argument("--config", "-c", dest='config', default="config.json", help="Path to the config file")
     parser.add_argument("--get-config-template", "-T", dest="get_config_template", action="store_true", help="Flag to get the configuration file template")
     parser.add_argument("--verbosity", "-v", dest="verbosity", type=int, choices=[0,1,2,3,4,5], help="Enable verbose output", default=5)
     parser.add_argument("--get-runs", "-N", dest="get_runs", action="store_true", help="Get all test runs")
@@ -71,6 +71,9 @@ def main():
     
     # setting up the database connection
     # db_url = f"mariadb+mariadbconnector://{config['database']['user']}:{config['database']['password']}@{config['database']['host']}:{config['database']['port']}/{config['database']['database']}"
+
+    # set the default value of project root to current directory, we will adjust it based on the location of this file.
+    project_root = "./"
 
     # setting up the database connection
     if config["database"]["engine"] == "sqlite":
@@ -201,6 +204,9 @@ def main():
     # ------------------------------------------------------------
     # SECOND PASS: Plan-level summaries
     # ------------------------------------------------------------
+
+    # initialize the plan_summary for each plan, we will update it in place in the score_card
+    plan_summary = ""
     for plan_name, metrics in score_card.items():
         if plan_name == "PlanSummary":
             continue
@@ -231,7 +237,7 @@ def main():
     table.add_column("Plan Name", style="cyan", no_wrap=True)
     table.add_column("Metric Name", style="magenta")
     table.add_column("Score (0-1)", style="green")
-    table.add_column("Metric Summary", style="white")
+    table.add_column("Metric Summary", style="blue")
     table.add_column("Plan Summary", style="yellow")
 
     if multi_plan:
@@ -270,15 +276,22 @@ def main():
     print(json.dumps(score_card, indent=4))
     Console().print(table)
 
+    reports_folder = os.path.join(project_root, "reports")
+    os.makedirs(reports_folder, exist_ok=True)
 
-    # ------------------------------------------------------------
-    # PDF generation
-    # ------------------------------------------------------------
-    run = dict(db.get_run_by_name(run_name=args.run_name))
-
-    target_name = run["target"]
-    run_name = run["run_name"]
+    run = db.get_run_by_name(run_name=args.run_name)
+    if not run:
+        logger.error(f"Run with name '{args.run_name}' not found.")
+        return
+    
+    target_name = getattr(run, "target")
+    run_name = getattr(run, "run_name")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Also save the scrore_card as a JSON for reference.
+    json_path = os.path.join(reports_folder, f"AI_Evaluation_Report_{target_name}_{run_name}.json")
+    with open(json_path, "w") as json_file:
+        json.dump(score_card, json_file, indent=4)
 
     total_testcases = sum(
         len(m.get("Testcases", {}))
@@ -286,8 +299,9 @@ def main():
         for m in metrics.values()
     )
 
-    reports_folder = os.path.join(project_root, "reports")
-    os.makedirs(reports_folder, exist_ok=True)
+    # ------------------------------------------------------------
+    # PDF generation
+    # ------------------------------------------------------------
 
     filename = EvaluationReport.create_report(
         target_name=target_name,
@@ -299,7 +313,7 @@ def main():
         score_card=score_card,
         out_path=os.path.join(
             reports_folder,
-            f"AI_Evaluation_Report_{target_name}.pdf"
+            f"AI_Evaluation_Report_{target_name}_{run_name}.pdf"
         ),
         column_widths=[100, 80, 40, None, None] if multi_plan else [100, 80, 40, None]
     )
