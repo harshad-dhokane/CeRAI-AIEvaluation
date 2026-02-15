@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm import sessionmaker, scoped_session, joinedload
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional, Union
@@ -15,15 +15,16 @@ from datetime import datetime
 sys.path.append(os.path.dirname(__file__) + '/..')
 
 from data import Prompt, Language, Domain, Response, TestCase, TestPlan, \
-    Strategy, Metric, LLMJudgePrompt, Target, Conversation, Run, RunDetail
+    Strategy, Metric, LLMJudgePrompt, Target, Conversation, Run, RunDetail, TimelineEvent
 from .tables import Base, Languages, Domains, Metrics, Responses, TestCases, \
     TestPlans, Prompts, Strategies, LLMJudgePrompts, Targets, Conversations, \
-        TestRuns, TestRunDetails, TestPlanMetricMapping
+        TestRuns, TestRunDetails, TestPlanMetricMapping, TargetLanguages
 from lib.utils import get_logger
 
 from jose import jwt, JWTError
 from fastapi import HTTPException, status
 
+# @BUG: THIS IS WRONG.  SHOULD BE FIXED.
 sys.path.append(os.path.dirname(__file__) + "/../../app/TDMS/back-end")
 from config import settings
 
@@ -755,6 +756,7 @@ class DB:
                     joinedload(TestCases.response),
                     joinedload(TestCases.strategy),
                     joinedload(TestCases.judge_prompt),
+                    joinedload(TestCases.metrics),
                 )
                 .filter(TestCases.testcase_id == testcase_id)
                 .first()
@@ -773,6 +775,31 @@ class DB:
                 if not strategy:
                     raise ValueError(f"Strategy '{updates['strategy_name']}' not found")
                 testcase.strategy_id = strategy.strategy_id
+                updated = True
+
+            # Update metrics - handle both metric_name (single) and metric_name_list (multiple)
+            if "metric_name_list" in updates and updates["metric_name_list"]:
+                # Handle list of metrics
+                metric_name_list = updates["metric_name_list"]
+                if not isinstance(metric_name_list, list):
+                    raise ValueError("metric_name_list must be a list")
+                # Clear existing metrics
+                testcase.metrics.clear()
+                # Add all metrics from the list
+                for metric_name in metric_name_list:
+                    metric = session.query(Metrics).filter(Metrics.metric_name == metric_name).first()
+                    if not metric:
+                        raise ValueError(f"Metric '{metric_name}' not found")
+                    testcase.metrics.append(metric)
+                updated = True
+            elif "metric_name" in updates and updates["metric_name"]:
+                # Handle single metric (backward compatibility)
+                metric = session.query(Metrics).filter(Metrics.metric_name == updates["metric_name"]).first()
+                if not metric:
+                    raise ValueError(f"Metric '{updates['metric_name']}' not found")
+                # Clear existing metrics and add the new one
+                testcase.metrics.clear()
+                testcase.metrics.append(metric)
                 updated = True
 
             # Update prompt with hash and reuse logic
@@ -940,6 +967,16 @@ class DB:
             )
             if llm_judge_prompt is None:
                 return False
+            
+            # Check if LLM judge prompt is used in TestCases
+            testcases_with_llm_prompt = (
+                session.query(TestCases)
+                .filter(TestCases.judge_prompt_id == llm_judge_prompt_id)
+                .first()
+            )
+            if testcases_with_llm_prompt:
+                raise ValueError("This LLM prompt cannot be deleted because it is used in the TestCase table.")
+            
             session.delete(llm_judge_prompt)
             session.commit()
             return True
@@ -1200,45 +1237,45 @@ class DB:
                                   lang_id=getattr(result, 'lang_id', Language.autodetect),  # Get the language ID from kwargs if provided
                                   digest=result.hash_value)
         
-    # def add_or_get_judge_prompt(self, judge_prompt: LLMJudgePrompt) -> int:
-    #     """
-    #     Adds a new judge prompt to the database.
+    def add_or_get_judge_prompt(self, judge_prompt: LLMJudgePrompt) -> int:
+        """
+        Adds a new judge prompt to the database.
         
-    #     Args:
-    #         judge_prompt (LLMJudgePrompt): The LLMJudgePrompt object to be added.
+        Args:
+            judge_prompt (LLMJudgePrompt): The LLMJudgePrompt object to be added.
         
-    #     Returns:
-    #         int: The ID of the newly added judge prompt, or -1 if it already exists.
-    #     """
-    #     try:
-    #         with self.Session() as session:
-    #             # check of the judge prompt already exists in the database.
-    #             existing_judge_prompt = session.query(LLMJudgePrompts).filter_by(hash_value=judge_prompt.digest).first()
-    #             if existing_judge_prompt:
-    #                 # Return the ID of the existing judge prompt
-    #                 return getattr(existing_judge_prompt, "prompt_id")
+        Returns:
+            int: The ID of the newly added judge prompt, or -1 if it already exists.
+        """
+        try:
+            with self.Session() as session:
+                # check of the judge prompt already exists in the database.
+                existing_judge_prompt = session.query(LLMJudgePrompts).filter_by(hash_value=judge_prompt.digest).first()
+                if existing_judge_prompt:
+                    # Return the ID of the existing judge prompt
+                    return getattr(existing_judge_prompt, "prompt_id")
                     
-    #             self.logger.debug(f"Adding new judge prompt: {judge_prompt.prompt}")
-    #             # create the orm object for the judge prompt to insert into the database table.
-    #             new_judge_prompt = LLMJudgePrompts(prompt=judge_prompt.prompt, 
-    #                                                lang_id=getattr(judge_prompt, "lang_id", Language.autodetect),  # Get the language ID from kwargs if provided
-    #                                                hash_value=judge_prompt.digest)
+                self.logger.debug(f"Adding new judge prompt: {judge_prompt.prompt}")
+                # create the orm object for the judge prompt to insert into the database table.
+                new_judge_prompt = LLMJudgePrompts(prompt=judge_prompt.prompt, 
+                                                   lang_id=getattr(judge_prompt, "lang_id", Language.autodetect),  # Get the language ID from kwargs if provided
+                                                   hash_value=judge_prompt.digest)
                 
-    #             # Add the new judge prompt to the session
-    #             session.add(new_judge_prompt)
-    #             # Commit the session to save the new judge prompt
-    #             session.commit()
-    #             # Ensure judge_prompt_id is populated
-    #             session.refresh(new_judge_prompt)  
+                # Add the new judge prompt to the session
+                session.add(new_judge_prompt)
+                # Commit the session to save the new judge prompt
+                session.commit()
+                # Ensure judge_prompt_id is populated
+                session.refresh(new_judge_prompt)  
 
-    #             self.logger.debug(f"Judge prompt added successfully: {new_judge_prompt.prompt_id}")
+                self.logger.debug(f"Judge prompt added successfully: {new_judge_prompt.prompt_id}")
                 
-    #             # Return the ID of the newly added judge prompt
-    #             return getattr(new_judge_prompt, "prompt_id")
-    #     except IntegrityError as e:
-    #         # Handle the case where the judge prompt already exists
-    #         self.logger.error(f"Judge prompt already exists: {judge_prompt}. Error: {e}")
-    #         return -1
+                # Return the ID of the newly added judge prompt
+                return getattr(new_judge_prompt, "prompt_id")
+        except IntegrityError as e:
+            # Handle the case where the judge prompt already exists
+            self.logger.error(f"Judge prompt already exists: {judge_prompt}. Error: {e}")
+            return -1
     
     def get_prompt(self, prompt_id: int) -> Optional[Prompt]:
         """
@@ -1419,7 +1456,7 @@ class DB:
         self,
         plan_name: str,
         n: int = 0,
-        lang_names: Optional[str] = None,
+        lang_names: Optional[List[str]] = None,
         domain_name: Optional[str] = None,
     ) -> List[TestCase]:
         """
@@ -2177,6 +2214,44 @@ class DB:
             return 0
         return 1 if s1 > s2 else -1
     
+    def get_all_runs(self, domain=None, target=None, status=None):
+        with self.Session() as session:
+            sql = (
+                select(TestRuns)
+                .outerjoin(Targets, TestRuns.target_id == Targets.target_id)
+                .outerjoin(Domains, Targets.domain_id == Domains.domain_id)
+            )
+
+            if target:
+                sql = sql.where(Targets.target_name == target)
+
+            if domain:
+                sql = sql.where(Domains.domain_name == domain)
+                # OR if frontend sends domain_id:
+                # sql = sql.where(Domains.domain_id == domain)
+
+            if status:
+                sql = sql.where(TestRuns.status == status)
+
+            results = session.execute(sql).scalars().all()
+
+            runs = []
+            for r in results:
+                runs.append(
+                    Run(
+                        run_id=r.run_id,
+                        run_name=r.run_name,
+                        target=r.target.target_name if r.target else None,
+                        target_id=r.target_id,
+                        start_ts=r.start_ts.isoformat(),
+                        end_ts=r.end_ts.isoformat() if r.end_ts else None,
+                        status=str(r.status),
+                    )
+                )
+
+            return runs
+
+    
     def get_run_by_name(self, run_name: str) -> Optional[Run]:
         """
         Fetches a test run by its name.
@@ -2224,7 +2299,7 @@ class DB:
                        end_ts=result.end_ts.isoformat(),
                        status=str(result.status),
                        run_id=getattr(result, 'run_id'))
-    
+
     def _ensure_datetime(self, value):
         if value is None:
             return None
@@ -2383,7 +2458,12 @@ class DB:
                 domain.domain_name = updates["domain_name"]
             session.commit()
             session.refresh(domain)
-            return self._serialize_domain(domain)
+            
+            # Return the updated domain as a dict (domain_name is a column, not a relationship)
+            return {
+                "domain_id": domain.domain_id,
+                "domain_name": domain.domain_name
+            }
 
     def delete_domain_record(self, domain_id: int) -> bool:
         with self.Session() as session:
@@ -2392,6 +2472,16 @@ class DB:
             )
             if not domain:
                 return False
+            
+            # Check if domain is used in Prompts that are referenced by TestCases
+            prompts_with_domain = session.query(Prompts).filter(Prompts.domain_id == domain_id).all()
+            if prompts_with_domain:
+                # Check if any of these prompts are used in TestCases
+                prompt_ids = [p.prompt_id for p in prompts_with_domain]
+                testcases_using_prompts = session.query(TestCases).filter(TestCases.prompt_id.in_(prompt_ids)).first()
+                if testcases_using_prompts:
+                    raise ValueError("This domain cannot be deleted because it is used in the TestCase table.")
+            
             session.delete(domain)
             session.commit()
             return True
@@ -2436,7 +2526,16 @@ class DB:
                 language.lang_name = updates["lang_name"]
             session.commit()
             session.refresh(language)
-            return self._serialize_language(language)
+            
+            # No need for joinedload on a column property
+            language_updated = (
+                session.query(Languages)
+                    .filter(Languages.lang_id == lang_id)
+                    .first()
+            )
+            
+            
+            return language_updated
 
     def delete_language_record(self, lang_id: int) -> bool:
         with self.Session() as session:
@@ -2445,6 +2544,16 @@ class DB:
             )
             if not language:
                 return False
+            
+            # Check if language is used in Prompts, Responses, LLMJudgePrompts, or TargetLanguages
+            prompts_with_lang = session.query(Prompts).filter(Prompts.lang_id == lang_id).first()
+            responses_with_lang = session.query(Responses).filter(Responses.lang_id == lang_id).first()
+            llm_prompts_with_lang = session.query(LLMJudgePrompts).filter(LLMJudgePrompts.lang_id == lang_id).first()
+            targets_with_lang = session.query(TargetLanguages).filter(TargetLanguages.lang_id == lang_id).first()
+            
+            if prompts_with_lang or responses_with_lang or llm_prompts_with_lang or targets_with_lang:
+                raise ValueError("This language cannot be deleted because it is used in the Prompt or Response or LLM Prompt or Target table.")
+            
             session.delete(language)
             session.commit()
             return True
@@ -2677,34 +2786,15 @@ class DB:
             if not prompt:
                 return False
             
-            # First, delete any TestCases that directly reference this prompt_id
-            # since prompt_id is NOT NULL in TestCases, we must delete them
-            # before deleting the prompt to avoid violating the NOT NULL constraint.
+            # Check if prompt is used in TestCases
             testcases_with_prompt = (
                 session.query(TestCases)
                 .filter(TestCases.prompt_id == prompt_id)
-                .all()
+                .first()
             )
-            for tc in testcases_with_prompt:
-                session.delete(tc)
+            if testcases_with_prompt:
+                raise ValueError("This prompt cannot be deleted because it is used in the TestCase table.")
             
-            # Then detach any TestCases that reference Responses for this prompt
-            # by nulling out their response_id, so that we can safely delete
-            # the corresponding Responses rows without violating FK constraints.
-            testcases_with_responses = (
-                session.query(TestCases)
-                .join(Responses, TestCases.response_id == Responses.response_id)
-                .filter(Responses.prompt_id == prompt_id)
-                .all()
-            )
-            for tc in testcases_with_responses:
-                tc.response_id = None
-
-            # Delete any Responses that reference this prompt_id to avoid
-            # violating the NOT NULL constraint on Responses.prompt_id.
-            session.query(Responses).filter(Responses.prompt_id == prompt_id).delete(
-                synchronize_session=False
-            )
             session.delete(prompt)
             session.commit()
             return True
@@ -2944,6 +3034,16 @@ class DB:
             )
             if not response:
                 return False
+            
+            # Check if response is used in TestCases
+            testcases_with_response = (
+                session.query(TestCases)
+                .filter(TestCases.response_id == response_id)
+                .first()
+            )
+            if testcases_with_response:
+                raise ValueError("This response cannot be deleted because it is used in the TestCase table.")
+            
             session.delete(response)
             session.commit()
             return True
@@ -3061,6 +3161,17 @@ class DB:
             )
             if not strategy:
                 return False
+
+            # check if strategy is used in TestCases
+            testcases_with_strategy = session.query(TestCases).filter(TestCases.strategy_id == strategy_id).all()
+            if testcases_with_strategy:
+                strategy_ids = [t.strategy_id for t in testcases_with_strategy]
+                testcases_using_strategy = session.query(TestCases).filter(TestCases.strategy_id.in_(strategy_ids)).first()
+                if testcases_using_strategy:
+                    raise ValueError(
+                        "This strategy cannot be deleted because it is used in the TestCase table."
+                    )
+
             session.delete(strategy)
             session.commit()
             return True
@@ -3736,6 +3847,9 @@ class DB:
             # Handle the case where the conversation already exists
             self.logger.error(f"Conversation already exists: {conversation}. Error: {e}")
             return -1
+        
+## evaluation score function
+
 
     def get_conversation_by_id(self, conversation_id: int) -> Optional[Conversation]:
         """
@@ -3790,6 +3904,7 @@ class DB:
                                  evaluation_ts=getattr(result, "evaluation_ts"),
                                  conversation_id=getattr(result, 'conversation_id')) for result in results]
 
+    # @BUG. Why is this put here!??
     # Back-end router functions
     def get_username_from_token(authorization: Optional[str]) -> Optional[str]:
         """Extract username from JWT token."""
@@ -3808,3 +3923,115 @@ class DB:
             return payload.get("user_name")
         except JWTError:
             return None
+        
+    # Maintenance function: assigning language IDs to responses
+    def update_response_language(self, response_id: int, lang_id: int) -> bool:
+        """
+        Updates the language of a response.
+
+        Args:
+            response_id (int): ID of the response to update.
+            lang_id (int): Language ID to set.
+
+        Returns:
+            bool: True if the response was updated, False otherwise.
+        """
+        with self.Session() as session:
+            self.logger.debug(f"Updating language for response ID {response_id} ..")
+
+            sql = (
+                update(Responses)
+                .where(Responses.response_id == response_id)
+                .values(lang_id=lang_id)
+            )
+
+            result = session.execute(sql)
+
+            if result.rowcount == 0:
+                self.logger.warning(f"No response found with ID {response_id}.")
+                return False
+
+            session.commit()
+            return True
+
+    # Maintenance function: assigning language IDs to LLM judge prompts
+    def update_llm_judge_prompt_language(self, prompt_id: int, lang_id: int) -> bool:
+        """
+        Updates the language of an LLM judge prompt.
+
+        Args:
+            prompt_id (int): ID of the LLM judge prompt to update.
+            lang_id (int): Language ID to set.
+
+        Returns:
+            bool: True if the prompt was updated, False otherwise.
+        """
+        with self.Session() as session:
+            self.logger.debug(f"Updating language for LLM judge prompt ID {prompt_id} ..")
+
+            sql = (
+                update(LLMJudgePrompts)
+                .where(LLMJudgePrompts.prompt_id == prompt_id)
+                .values(lang_id=lang_id)
+            )
+
+            result = session.execute(sql)
+
+            if result.rowcount == 0:
+                self.logger.warning(f"No LLM judge prompt found with ID {prompt_id}.")
+                return False
+
+            session.commit()
+            return True
+
+        
+    def get_run_timeline(self, run_name: str) -> list[TimelineEvent]:
+        with self.Session() as session:
+            sql = (
+                select(Conversations)
+                .join(TestRunDetails)
+                .join(TestRuns)
+                .where(TestRuns.run_name == run_name)
+            )
+
+            results = session.execute(sql).scalars().all()
+
+            timeline: list[TimelineEvent] = []
+
+            for conv in results:
+                detail = conv.detail
+
+                timeline.append(
+                    TimelineEvent(
+                        conversation_id=conv.conversation_id,
+                        run_name=detail.run.run_name,
+                        testcase_name=detail.testcase.testcase_name,
+                        metric_name=detail.metric.metric_name,
+                        plan_name=detail.plan.plan_name,
+
+                        prompt_ts=conv.prompt_ts.isoformat() if conv.prompt_ts else None,
+                        response_ts=conv.response_ts.isoformat() if conv.response_ts else None,
+                        evaluation_ts=conv.evaluation_ts.isoformat() if conv.evaluation_ts else None,
+
+                        evaluation_score=conv.evaluation_score,
+                        evaluation_reason=conv.evaluation_reason,
+                    )
+                )
+
+            # 🔥 timeline ordering logic
+            timeline.sort(
+                key=lambda x: x.prompt_ts or x.response_ts or x.evaluation_ts or ""
+            )
+
+            return timeline
+
+    def get_metrics_by_testplan(self, plan_name: str) -> list[str]:
+        with self.Session() as session:
+            sql = (
+                select(Metrics.metric_name)
+                .join(TestPlanMetricMapping, Metrics.metric_id == TestPlanMetricMapping.metric_id)
+                .join(TestPlans, TestPlans.plan_id == TestPlanMetricMapping.plan_id)
+                .where(TestPlans.plan_name == plan_name)
+            )
+            return session.execute(sql).scalars().all()    
+

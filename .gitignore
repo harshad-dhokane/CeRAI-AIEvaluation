@@ -29,7 +29,6 @@ new_fairness_stereotype_recognition.py
 AI
 app.db
 TDMS.db
-data/AIEvaluationData.db
 AIEvaluationData.db
 strategy_id/
 
@@ -57,3 +56,4 @@ src/app/TDMS/front-end/*.sln
 src/app/TDMS/front-end/*.sw?
 *.sqlite3
 chroma_langchain_db/
+data/AIEvaluationData.db

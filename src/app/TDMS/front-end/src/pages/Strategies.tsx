@@ -288,7 +288,19 @@ const StrategyList: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        // throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        const errorMessage = errorData.detail || `HTTP error! status: ${response.status}`;
+
+        if (errorMessage.includes("TestCase") || errorMessage.includes("cannot be deleted")) {
+          toast({
+            title: "Cannot Delete Strategy",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        } else {
+          throw new Error(errorMessage);
+        }
+        return;
       }
 
       toast({
@@ -377,7 +389,7 @@ const StrategyList: React.FC = () => {
           </div>
           
           <div className="flex-1 min-h-0 overflow-y-auto">
-            <div className="bg-white rounded-lg shadow overflow-hidden max-h-[73vh] max-w-[70%] mx-left overflow-y-auto">
+            <div className="bg-white rounded-lg shadow overflow-hidden max-h-[73vh] max-w-[500px] mx-left overflow-y-auto">
               {isLoading ? (
                 <div className="flex items-center justify-center p-8">
                   <span>Loading...</span>
@@ -388,7 +400,7 @@ const StrategyList: React.FC = () => {
                     <tr>
                       <th className="sticky top-0 z-10 p-4 font-semibold text-left w-[15%] ">Strategy ID</th>
                       <th className="sticky top-0 z-10 p-2 font-semibold text-left w-[30%]">Strategy Name</th>
-                      <th className="sticky top-0 z-10 pl-8 p-2 font-semibold text-left ">Strategy Description</th>
+                      {/* <th className="sticky top-0 z-10 pl-8 p-2 font-semibold text-left ">Strategy Description</th> */}
                     </tr>
                   </thead>
                   <tbody>
@@ -413,7 +425,7 @@ const StrategyList: React.FC = () => {
                         >
                           <td className="p-2 pl-12">{row.strategy_id}</td>
                           <td className="p-2 truncate">{row.strategy_name}</td>
-                          <td className="p-2 max-w-md truncate">{row.strategy_description || ""}</td>
+                          {/* <td className="p-2 max-w-md truncate">{row.strategy_description || ""}</td> */}
                         </tr>
                       ))
                     )}
@@ -493,7 +505,7 @@ const StrategyList: React.FC = () => {
               {(hasPermission(currentUserRole, "canUpdateTables") ||
                 hasPermission(currentUserRole, "canUpdateRecords")) && (
                 <button
-                  className="px-6 md:px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm md:text-base transition-colors"
+                  className="px-6 md:px-8 py-2 bg-primary hover:bg-primary/90 text-white rounded text-sm md:text-base transition-colors"
                   onClick={() => {
                     setShowEditDialog(false);
                     setShowUpdateModal(true);
@@ -561,11 +573,11 @@ const StrategyList: React.FC = () => {
       {/* Update Modal */}
       {showUpdateModal && selectedStrategy && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/20 z-50 p-4"
-          onClick = {() => {
-            setShowUpdateModal(false);
-            setSelectedStrategy(null);
-            setUpdateMessage("");
-          }}
+          // onClick = {() => {
+          //   setShowUpdateModal(false);
+          //   setSelectedStrategy(null);
+          //   setUpdateMessage("");
+          // }}
         >
           <div className="relative bg-white rounded-lg shadow-xl px-4 md:px-8 pt-6 md:pt-8 pb-4 md:pb-6 w-full max-w-lg min-h-[300px]"
             onClick={(e) => e.stopPropagation()}
@@ -606,14 +618,10 @@ const StrategyList: React.FC = () => {
               <Input
                 value={updateMessage}
                 onChange={e => setUpdateMessage(e.target.value)}
-                className="bg-gray-100 rounded border border-gray-300 px-3 md:px-4 py-2 text-sm md:text-[17px] flex-1 w-full md:w-auto focus:outline-none focus:ring focus:ring-blue-200"
+                className="bg-gray-100 rounded px-4 py-1 mr-4 w-96"
               />
               <button
-                className={`mt-2 md:mt-0 md:ml-4 px-6 py-2 rounded text-sm md:text-lg font-semibold shadow transition ${
-                  updateName.trim() && updateMessage.trim() 
-                    ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer" 
-                    : "bg-green-300 text-white cursor-not-allowed"
-                }`}
+                className="bg-gradient-to-b from-lime-400 to-green-700 text-white px-6 py-1 rounded shadow font-semibold border border-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!updateName.trim() || !updateMessage.trim()}
                 onClick={handleUpdate}
               >
@@ -675,15 +683,11 @@ const StrategyList: React.FC = () => {
               <Input
                 value={addMessage}
                 onChange={e => setAddMessage(e.target.value)}
-                className="bg-gray-100 rounded border border-gray-300 px-3 md:px-4 py-2 text-sm md:text-[17px] flex-1 w-full md:w-auto focus:outline-none focus:ring focus:ring-blue-200"
+                className="bg-gray-200 rounded px-4 py-1 mr-4 w-96"
               />
               <button
                 type="button"
-                className={`mt-2 md:mt-0 md:ml-4 px-6 py-2 rounded text-sm md:text-lg font-semibold shadow transition ${
-                  newStrategyName.trim() && addMessage.trim() && newStrategyDescription.trim()
-                    ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer" 
-                    : "bg-green-300 text-white cursor-not-allowed"
-                }`}
+                className="bg-gradient-to-b from-lime-400 to-green-700 text-white px-6 py-1 rounded shadow font-semibold border border-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleAdd}
                 disabled={!newStrategyName.trim() || !newStrategyDescription.trim() || !addMessage.trim()}
               >

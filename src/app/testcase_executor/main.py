@@ -22,6 +22,15 @@ from lib.orm import DB  # Import the DB class from the ORM module
 from lib.data import Target, Run, RunDetail, Conversation
 from lib.utils import get_logger, get_logger_verbosity
 
+def is_error_response(response):
+    error_indicators = [
+        "chat not found",
+        "[error: max retries exceeded]",
+        "[error: connection refused]",
+        "no response received"
+    ]
+    return len(response) == 0 or any(indicator in response[0]['response'].lower() for indicator in error_indicators)
+
 def main():
     """ Main function to handle command-line arguments and execute test cases.
     This function initializes the argument parser, processes the command-line arguments,
@@ -52,7 +61,7 @@ def main():
     parser.add_argument("--get-testcases", "-C", dest="get_testcases", action="store_true", help="Get the test cases for a specific test plan or all test cases if no plan ID is provided")
     parser.add_argument("--get-targets", "-G", dest="get_targets", action="store_true", help="Get all target applications")
     parser.add_argument("--get-runs", "-N", dest="get_runs", action="store_true", help="Get all test runs")
-    parser.add_argument("--testplan-id", "-p", dest="plan_id", type=int, help="ID of the test plan to execute", required=True)
+    parser.add_argument("--testplan-id", "-p", dest="plan_id", type=int, help="ID of the test plan to execute")
     parser.add_argument("--testcase-id", "-t", dest="testcase_id", type=int, help="ID of the specific test case to execute")
     parser.add_argument("--metric-id", "-m", dest="metric_id", type=int, help="ID of the evaluation metric to use")
     parser.add_argument("--max-testcases", "-n", dest="max_testcases", type=int, default=10, help="Maximum number of test cases to execute (default: 10)")
@@ -439,7 +448,7 @@ def main():
 
                         # Check if the response is empty or indicates a chat not found
                         # Here, we will leave the Conversation entry dangling in the DB to indicate the the conversation was not successful.
-                        if len(agent_response) == 0 or agent_response[0]['response'] == "Chat not found":
+                        if is_error_response(agent_response):
                             logger.error(f"No response received from the agent for test case {testcase.testcase_id}.")
                             rundetail.status = "FAILED"
                             db.add_or_update_testrun_detail(rundetail)
@@ -553,7 +562,7 @@ def main():
 
                         # Check if the response is empty or indicates a chat not found
                         # Here, we will leave the Conversation entry dangling in the DB to indicate the the conversation was not successful.
-                        if len(agent_response) == 0 or agent_response[0]['response'] == "Chat not found":
+                        if is_error_response(agent_response):
                             logger.error(f"No response received from the agent for test case {testcase.testcase_id}.")
                             rundetail.status = "FAILED"
                             db.add_or_update_testrun_detail(rundetail)
@@ -650,8 +659,7 @@ def main():
 
                         # Check if the response is empty or indicates a chat not found
                         # Here, we will leave the Conversation entry dangling in the DB to indicate the the conversation was not successful.
-                        if len(agent_response) == 0 or agent_response[0]['response'] == "Chat not found" \
-                            or agent_response[0]['response'].strip() == "[Error: Max retries exceeded]":
+                        if is_error_response(agent_response):
                             logger.error(f"No response received from the agent for test case {testcase.testcase_id}.")
                             rundetail.status = "FAILED"
                             db.add_or_update_testrun_detail(rundetail)
