@@ -693,7 +693,7 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
                 run
             )
         print()    
-        print(f"totalllllllsss {total_testcases}")
+        print(f"total testcases: {total_testcases}")
         return {
             "status": "success",
             "runId": run_id,
@@ -869,7 +869,7 @@ async def execute_testcases(
         run.status = "COMPLETED"
         db.add_or_update_testrun(run=run)
     
-        # client.close()
+    client.close()
     
     print(f"✅ Finished testcase: {testcase.name}")
     await ws_manager.send_all({
