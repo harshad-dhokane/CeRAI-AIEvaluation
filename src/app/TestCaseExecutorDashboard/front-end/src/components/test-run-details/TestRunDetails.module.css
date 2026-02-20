@@ -299,14 +299,14 @@
 
 .tableContainer {
   overflow-x: auto;
-  background-color: #d9dbe1;
+  background-color: #ffffff;
   padding: 0;
   margin: 0;
   flex: 1;
   -webkit-overflow-scrolling: touch;
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 10px 20px rgba(16, 24, 40, 0.04);
-  border: 1px solid #c8ced7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
 }
 
 .tableLayout {
@@ -316,22 +316,24 @@
 
 .resultsTable {
   width: 100%;
-  margin-bottom: 0px;
-  border-collapse: collapse;
+  margin: 0;
+  border-collapse: separate;
   border-spacing: 0;
   min-width: 820px;
 }
 
 .resultsTable thead th {
-  background: linear-gradient(180deg, #3f8ad8 0%, #4c97e3 100%);
+  background: linear-gradient(180deg, #2d95fd 0%, #7094bb 100%);
   color: #fafafd;
   font-weight: 600;
   text-align: left;
   padding: 16px 16px;
-  border: none;
+  border-bottom: 1px solid #e2e8f0;
   font-size: 14px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
 }
 
 .resultsTable thead th:first-child {
@@ -341,113 +343,68 @@
 .resultsTable tbody td {
   text-align: left;
   padding: 8px 16px;
-  border-bottom: 1px solid #cfd4dc;
+  border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
-  font-size: 1.05rem;
+  font-size: 14px;
   color: #334155;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
 }
 
 .tableRow {
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease;
   cursor: pointer;
-  position: relative;
-  background-color: #eef0f4;
+  background-color: #ffffff;
 }
-
-/* .tableRow:nth-child(even) {
-  background-color: #e4e8ee;
-}
-
-.tableRow td {
-  background-color: transparent;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-} */
 
 .tableRow:hover td {
-  background-color: #d5dce7;
+  background-color: #f1f4f7;
 }
 
 .metricRowHover {
-  background-color: #d5dce7 !important;
-  z-index: 10;
+  background-color: #f1f4f7 !important;
 }
 
 .metricRowHover td {
-  background-color: #d5dce7 !important;
+  background-color: #f1f4f7 !important;
 }
 
 .planCell {
   font-weight: 500;
-  border-right: 1px solid #c5ccd6;
+  border-right: 1px solid #e2e8f0;
   min-width: 200px;
-}
-
-.metricRowHover :global(.planCell) {
-  background-color: transparent !important;
-}
-
-.metricRowHover td:nth-child(2) {
-  /* border-left: 4px solid #3b82f6; */
-  padding-left: 12px;
-}
-
-/* Plan name cell hover effect */
-.resultsTable tbody tr:not(:global(.metricRowHover)):hover td:first-child {
-  background-color: #f1f5f9 !important;
-  font-weight: 600;
-  border-left: 3px solid #3b82f6;
-  padding-left: 12px;
-}
-
-/* Add a subtle transition for smooth hover effects */
-.resultsTable td {
-  transition: all 0.2s ease;
-  vertical-align: middle;
-  padding: 12px 16px !important;
-}
-
-/* Add click feedback */
-.resultsTable tbody tr:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Ensure status cell doesn't trigger hover/click */
-.resultsTable  tbody tr td:last-child {
-  position: relative;
-  z-index: 1;
 }
 
 .statusCell {
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.025em;
   padding: 4px 14px;
-  border-radius: 20px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.92rem;
+  font-size: 12px;
   min-width: 92px;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
 }
 
 .statusCompleted {
-  background-color: #b8e5ce;
-  color: #16a34a;
+  background-color: #d1fae5;
+  color: #065f46;
 }
 
 .statusRunning {
-  background-color: #cfe1f8;
-  color: #2563eb;
+  background-color: #dbeafe;
+  color: #1e40af;
 }
 
 .statusFailed {
-  background-color: #f8cdd0;
-  color: #dc2626;
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 
 .statusNew {
-  background-color: #d8dee8;
+  background-color: #f1f5f9;
   color: #475569;
 }
 
@@ -471,9 +428,9 @@
 ====================== */
 .emptyState {
   text-align: center;
-  padding: 40px 20px;
+  padding: 48px 16px;
   color: #64748b;
-  font-style: italic;
+  font-size: 14px;
 }
 
 /* ======================

@@ -257,7 +257,7 @@ const RunDetails: React.FC = () => {
               <tbody>
                 {details.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-4 text-muted">
+                    <td colSpan={5} className={styles.emptyState}>
                       No test case details found
                     </td>
                   </tr>
