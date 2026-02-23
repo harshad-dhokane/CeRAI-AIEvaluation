@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import styles from "./runtimeline.module.css";
+import { API_BASE_URL, API_ENDPOINTS } from "../../config/api";
 
 /* ===== TYPES ===== */
 
@@ -25,7 +26,7 @@ const RunTimeline: React.FC<Props> = ({ runName, hoveredMetric, onHoverMetric })
   const [events, setEvents] = useState<TimelineEvent[]>([]);
 
   useEffect(() => {
-    fetch(`http://localhost:7000/test-runs/${runName}/timeline`)
+    fetch(API_ENDPOINTS.GET_TIMELINE(runName))
       .then(res => res.json())
       .then(setEvents);
   }, [runName]);

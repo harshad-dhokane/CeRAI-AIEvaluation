@@ -1,0 +1,23 @@
+export const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL !;
+
+ export const API_ENDPOINTS = {
+    GET_ALL_FILTERS: "/get_all_filters",
+    GET_ALL_TEST_RUNS: "/get_all_test_runs",
+    DOWNLOAD_REPORT: (runName: string) =>
+    `${API_BASE_URL}/test-runs/${runName}/evaluation-report`,
+    GET_CONVERSATION: (conversationId: string) =>
+    `${API_BASE_URL}/conversations/full/${conversationId}`,
+    GET_TIMELINE: (runName: string) =>
+    `${API_BASE_URL}/test-runs/${runName}/timeline`,
+    GET_TEST_RUN_DETAILS: (runName: string, query: string) =>
+    `${API_BASE_URL}/test-runs/${encodeURIComponent(runName)}${
+      query ? `?${query}` : ""
+    }`,
+    GET_METRICS_BY_PLAN: (planName: string) =>
+    `${API_BASE_URL}/get_metrics_by_plan/${planName}`,
+    START_RUN: `${API_BASE_URL}/start-run`,
+}  
+
+
+export const WS_BASE_URL = API_BASE_URL.replace("http", "ws");

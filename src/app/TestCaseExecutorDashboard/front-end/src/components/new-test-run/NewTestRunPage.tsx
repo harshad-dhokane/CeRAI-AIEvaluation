@@ -1,6 +1,6 @@
 import React,{useState, useEffect} from 'react';
 import './NewTestRunPage.css';
-
+import { API_BASE_URL, API_ENDPOINTS,WS_BASE_URL } from "../../config/api";
 // Import only the Bootstrap CSS for the select components
 
 import CustomSelect from './CustomSelect/CustomSelect';
@@ -57,7 +57,7 @@ const NewTestRunPage: React.FC = () => {
   useEffect(() => {
   const fetchFilters = async () => {
     try {
-      const res = await fetch("http://localhost:7000/get_all_filters");
+      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`);
       const data: AllFiltersResponse = await res.json();
       setFilters(data);
     } catch (err) {
@@ -70,7 +70,7 @@ const NewTestRunPage: React.FC = () => {
 const fetchMetricsByPlan = async (planName: string) => {
   try {
     const res = await fetch(
-      `http://localhost:7000/get_metrics_by_plan/${planName}`
+      `${API_BASE_URL}/get_metrics_by_plan/${planName}`
     );
     const data = await res.json();
     setPlanMetrics(data.map((m: any) => m.filter_name));
@@ -93,8 +93,8 @@ const handleChange = (key: string, value: any) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsRunning(true); 
-    const res = await fetch("http://localhost:7000/start-run", {
+    
+    const res = await fetch(`${API_BASE_URL}/start-run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -103,12 +103,15 @@ const handleChange = (key: string, value: any) => {
     });
 
     const runData = await res.json(); // <-- this should now include runName, runId, testPlanId, metricId
-    console.log("POST /start-run response:", runData);
+     if (!res.ok) {
+      alert(runData.detail || "Failed to start run");
+      return;  // 🛑 STOP here
+    }
     setTotalTestCases(runData.totalTestCases);
     setIsRunning(true); // now we can start the Loop component
 
     // 2️⃣ Open WebSocket to get live updates
-    const ws = new WebSocket("ws://localhost:7000/ws/test-run");
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/test-run`);
 
     ws.onopen = () => {
       console.log("WebSocket connected, sending run info");
@@ -225,7 +228,9 @@ const handleChange = (key: string, value: any) => {
           Start Run
         </button>
       </form>
-      {isRunning && <Loop isRunning={isRunning} totalTestCases={totalTestCases} stepsPerTestCase={4} stepNames={["Prepare", "Finding elements", "Execute", "Store"]}/>}       
+      {isRunning && <Loop isRunning={isRunning} totalTestCases={totalTestCases} stepsPerTestCase={4} 
+        stepNames={["Prepare", "Finding elements", "Execute", "Store"]} planName={formData.testPlan}   
+        metricName={formData.metric}/>}       
       
     </div>
   );

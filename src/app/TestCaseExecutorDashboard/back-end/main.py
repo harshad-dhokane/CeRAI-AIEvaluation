@@ -48,7 +48,7 @@ except FileNotFoundError:
 
 db_cfg = config.get("db", {})
 engine_type = db_cfg.get("engine_type", "sqlite").lower()
-
+print("this",sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))))
 port_config = config.get("port", {})
 BACKEND_PORT = int(port_config.get("back-end", 7000))
 
@@ -540,6 +540,11 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
         domain_name = data.domain if data.domain else None
         lang_name = data.language if data.language else None
         provided_run_name = data.runName.strip() if data.runName else None
+        if test_case_id and metric_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide either 'testCaseId' or 'metric', not both."
+            )
         try:
             max_test_cases = int(data.maxTestCases)
             print(max_test_cases)
@@ -568,7 +573,22 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
         print(f"Starting run with Test Plan: {plan_name}")
 
         if test_case_id:
-            testcases = db.get_testcase_by_id(test_case_id)
+            testcases = db.get_testcase_by_name(test_case_id)
+            if not testcases:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Test case ID '{test_case_id}' does not exist"
+                )
+            # is_valid = db.is_testcase_in_testplan(
+            #     test_case_id=test_case_id,
+            #     plan_name=plan_name
+            # )
+
+            # if not is_valid:
+            #     raise HTTPException(
+            #         status_code=400,
+            #         detail=f"Test case '{test_case_id}' is not mapped to test plan '{plan_name}'"
+            #     )
             testcases = [testcases]
             total_testcases = len(testcases)
             print(f"Length of testcases: {len(testcases)}")
@@ -692,8 +712,7 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
                 testcases,
                 run
             )
-        print()    
-        print(f"totalllllllsss {total_testcases}")
+        
         return {
             "status": "success",
             "runId": run_id,
@@ -718,11 +737,86 @@ def continue_run(data: ContinueRunRequest):
 
     # 2️⃣ Get run details
     details = db.get_run_details_by_run_id(run.run_id)
-
+    print(f"Run {data.run_name} has {run} details")
+    print(f"Found {len(details)} details for run {data.run_name}")
     return {
         "run": run,
         "details": details
     }
+
+@app.post("/continue-run-with-plan")
+def continue_run_with_plan(data: NewTestRun, background_tasks: BackgroundTasks):
+
+    run = db.get_run_by_name(data.runName)
+
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    # 🔒 Safety check
+    if run.target != data.target:
+        raise HTTPException(
+            status_code=400,
+            detail="Target mismatch with existing run"
+        )
+
+    # 🔄 Reopen if completed
+    if run.status == "COMPLETED":
+        run.status = "RUNNING"
+        run.end_ts = None
+        db.add_or_update_testrun(run=run, override=True)
+
+    run_id = run.run_id
+    run_name = run.run_name
+
+    plan_name = data.testPlan
+    metric_name = data.metric
+
+    if not plan_name:
+        raise HTTPException(status_code=400, detail="Test Plan is required")
+
+    try:
+        max_test_cases = int(data.maxTestCases)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid maxTestCases")
+
+    # 🔥 Fetch testcases
+    if metric_name:
+        testcases = db.get_testcases_by_metric(
+            metric_name=metric_name,
+            n=max_test_cases,
+            lang_names=data.language,
+            domain_name=data.domain
+        )
+    else:
+        testcases = db.get_testcases_by_testplan(
+            plan_name=plan_name,
+            n=max_test_cases,
+            lang_names=data.language,
+            domain_name=data.domain
+        )
+
+    if not testcases:
+        raise HTTPException(status_code=400, detail="No testcases found")
+
+    # 🚀 Launch background execution
+    background_tasks.add_task(
+        execute_testcases,
+        run_name,
+        run_id,
+        plan_name,
+        data.target,
+        testcases,
+        run
+    )
+
+    return {
+        "status": "continued",
+        "runId": run_id,
+        "runName": run_name,
+        "addedPlan": plan_name,
+        "totalTestCases": len(testcases)
+    }
+
 
 async def execute_testcases(
     run_name,

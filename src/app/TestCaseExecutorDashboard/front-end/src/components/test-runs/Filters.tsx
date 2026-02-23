@@ -4,7 +4,7 @@ import { AllFilters } from "../../types/Filters";
 import { useNavigate } from "react-router-dom";
 import FilterSelect from "../common/Filters/Filters"
 import AppButton from "../common/Button/AppButton";
-
+import { API_BASE_URL, API_ENDPOINTS } from "../../config/api";
 interface FiltersProps {
   onFilterChange?: (filterType: string, value: string) => void;
 }
@@ -23,7 +23,7 @@ const Filters: React.FC<FiltersProps> = ({ onFilterChange }) => {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch("http://localhost:7000/get_all_filters")
+    fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`)
       .then((res) => res.json())
       .then((data: AllFilters) => {
         setFilters(data);
