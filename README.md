@@ -671,8 +671,9 @@ Use this setup when models are hosted on a remote GPU machine.
 - **Forward Remote Ports to Local Machine** 
     ```bash
     ssh gpu_machine_cred@machineIP \
-    -L localhost:11434:localhost:<free-port-local> \
-    -L localhost:<free-port-gpu:localhost:<free-port-local>
+    -L 21434:localhost:11434 \
+    -L <free-local-port:localhost:<ollama-port> \
+    -L <free-local-port:localhost:<gpu-port>
     ```
 After serving sarvam ai, it will looks similar to following:
 

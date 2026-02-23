@@ -59,7 +59,7 @@ plotly
 tenacity
 
 rouge_score
-abs
+#abs
 levenshtein
 stanza
 zss
@@ -69,5 +69,6 @@ matplotlib
 scipy
 seaborn
 bert-extractive-summarizer
+#pkg_resources
 
 mariadb
