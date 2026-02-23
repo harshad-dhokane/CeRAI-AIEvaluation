@@ -5,6 +5,8 @@ import Modal from "./Modal";
 import RunTimeline from "./RunTimeline";
 import DetailCard from "../common/DetailCard/DetailCard";
 import RunDetailsFilters from "../common/Filters/FiltersRunDet";
+import AppButton from "../common/Button/AppButton";
+import { useNavigate } from "react-router-dom";
 
 
 /* ======================
@@ -58,6 +60,8 @@ const RunDetails: React.FC = () => {
     metrics: [],
     statuses: [],
   });
+
+  const navigate = useNavigate();
 
   const [activeFilters, setActiveFilters] = useState<{
     metric?: string;
@@ -230,14 +234,28 @@ const RunDetails: React.FC = () => {
             <i className="bi-funnel"></i>
             Filter Results
           </h2> */}
-          <RunDetailsFilters
-            metrics={filtersData.metrics}
-            statuses={filtersData.statuses}
-            loading={loading}
-            activeFilters={activeFilters}
-            onFilterChange={handleFilterChange}
-          />
+          <div>
+            <RunDetailsFilters
+              metrics={filtersData.metrics}
+              statuses={filtersData.statuses}
+              loading={loading}
+              activeFilters={activeFilters}
+              onFilterChange={handleFilterChange}
+            />
+          </div>
+
         </div>
+          <div>
+            <AppButton
+              label="Continue"
+              variant="outline-secondary"
+              icon="bi-play-fill"
+              size="md"
+              className="new-test-run-btn"
+              // onClick={() => navigate(`/create-test-run`)}
+            />
+          </div>
+
       </div>
 
       {/* Table Section */}

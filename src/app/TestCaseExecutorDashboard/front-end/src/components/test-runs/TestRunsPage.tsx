@@ -22,6 +22,9 @@ const TestRunsPage: React.FC = () => {
   return (
     <div className="page-container">
       <Header />
+      {/* <div>
+        <span><img src="" alt="test runs logo" /><h3>Test Runs</h3></span>
+      </div> */}
       <Filters onFilterChange={handleFilterChange} />
       <TestRunsTable filters={activeFilters} />
     </div>

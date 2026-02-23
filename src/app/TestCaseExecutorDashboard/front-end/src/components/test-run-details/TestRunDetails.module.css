@@ -162,6 +162,7 @@
   flex-wrap: wrap;
   gap: 16px; /* Increased gap for better breathing room */
   align-items: center;
+  justify-content: space-between
 }
 
 .filtersCard {
@@ -171,12 +172,12 @@
   box-shadow: none;
   border: none;
   width: 180px;
-  display: flex;
   gap: 0.9rem;
+  display: flex;
   align-items: center;
 }
 
-.filtersTitle {
+/* .filtersTitle {
   font-size: 1rem;
   font-weight: 600;
   color: #4b5563;
@@ -184,7 +185,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
+} */
 
 /* ======================
    METRIC ROW HOVER (Timeline Triggered)
