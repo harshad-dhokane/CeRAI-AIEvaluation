@@ -19,6 +19,7 @@ interface RunFormData {
 
 interface FilterItem {
   filter_name: string;
+  extra_info?: string; // optional, matches backend
 }
 
 interface AllFiltersResponse {
@@ -154,7 +155,11 @@ const handleChange = (key: string, value: any) => {
           <div className="filter-item">
             <label>Target</label>
             <CustomSelect
-              options={filters?.targets.map(t => t.filter_name) ?? []}
+              options={
+                filters?.targets.map(
+                  t => `${t.filter_name}${t.extra_info ? ` (${t.extra_info})` : ""}`
+                ) ?? []
+              }
               defaultText="Select Target"
               onChange={(val) => handleChange("target", val)}
             />

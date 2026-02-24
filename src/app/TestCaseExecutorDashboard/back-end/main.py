@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, Query, WebSocket, BackgroundTasks,We
 from fastapi.responses import FileResponse
 from services.ws_manager import ws_manager 
 from openpyxl import Workbook, load_workbook
-from typing import Optional, List
+from typing import Optional, List,Literal
 import tempfile
 import os
 # import mysql.connector
@@ -26,7 +26,10 @@ from lib.data import Target, Run, RunDetail, Conversation
 
 from lib.orm.tables import TestRuns
 from lib.interface_manager import InterfaceManagerClient  # Import the InterfaceManagerClient from the lib directory
+
+
 from apis.testruns import router as testruns_router
+from apis.filters import router as filters_router
 
 # db_url = (
 #             f"mysql+mysqlconnector://"
@@ -49,7 +52,7 @@ except FileNotFoundError:
 
 db_cfg = config.get("db", {})
 engine_type = db_cfg.get("engine_type", "sqlite").lower()
-print("this",sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))))
+
 port_config = config.get("port", {})
 BACKEND_PORT = int(port_config.get("back-end", 7000))
 
@@ -95,7 +98,7 @@ app.add_middleware(
 )
 
 app.include_router(testruns_router)
-
+app.include_router(filters_router)
 
 def load_config():
     with open(config_path , "r") as f:
@@ -117,68 +120,73 @@ async def step(ws_payload, delay=0.1):
     await ws_manager.send_all(ws_payload)
     await asyncio.sleep(delay)
 
-@app.get(
-    "/get_all_test_runs",
-    response_model=list[TestRunResponse]
-)
-def get_all_test_runs(
-    domain: Optional[str] = Query(None),
-    target: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
-):
-    try:
+# @app.get(
+#     "/get_all_test_runs",
+#     response_model=list[TestRunResponse]
+# )
+# def get_all_test_runs(
+#     domain: Optional[str] = Query(None),
+#     target: Optional[str] = Query(None),
+#     status: Optional[str] = Query(None),
+#     sort_by: Literal["end_ts", "start_ts"] = Query("end_ts"),
+#     order: Literal["asc", "desc"] = Query("desc"),
+# ):
+#     try:
         
-        db = DB(db_url=db_url, debug=False)
-        runs = db.get_all_runs(domain=domain, target=target, status=status)
-        print(domain, target, status)
-        response = []
-
-        for r in runs:
-            domain_name = None
-
-            target_id = r.kwargs.get("target_id") if hasattr(r, "kwargs") else None
-
-            if target_id:
-                target_obj = db.get_target_by_id(target_id)
-                if target_obj:
-                    domain_name = target_obj.target_domain   # ✅ FIX
-
-            response.append(
-                TestRunResponse(
-                    run_id=r.run_id,
-                    run_name=r.run_name,
-                    target=r.target,
-                    status=r.status,
-                    start_ts=r.start_ts,
-                    end_ts=r.end_ts,
-                    domain=domain_name
-                )
-            )
-
-        return response
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/get_all_filters", response_model=AllFiltersResponse)
-def get_all_filters():
-    try:
+#         db = DB(db_url=db_url, debug=False)
+#         runs = db.get_all_runs(domain=domain, target=target, status=status)
         
-        # Use the @property methods to get all data
-        return AllFiltersResponse(
-            domains=[FilterResponse(filter_name=d.name) for d in db.domains],
-            languages=[FilterResponse(filter_name=l.name) for l in db.languages],
-            targets=[FilterResponse(filter_name=t.target_name) for t in db.targets],
-            statuses=[
-                FilterResponse(filter_name="COMPLETED"),
-                FilterResponse(filter_name="RUNNING"),
-            ],
-            plans=[FilterResponse(filter_name=p.plan_name) for p in db.plans],
-            metrics=[FilterResponse(filter_name=m.metric_name) for m in db.metrics]
-        )
+#         response = []
+        
+#         for r in runs:
+#             domain_name = None
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#             target_id = r.kwargs.get("target_id") if hasattr(r, "kwargs") else None
+
+#             if target_id:
+#                 target_obj = db.get_target_by_id(target_id)
+#                 if target_obj:
+#                     domain_name = target_obj.target_domain   # ✅ FIX
+
+#             response.append(
+#                 TestRunResponse(
+#                     run_id=r.run_id,
+#                     run_name=r.run_name,
+#                     target=r.target,
+#                     status=r.status,
+#                     start_ts=r.start_ts,
+#                     end_ts=r.end_ts,
+#                     domain=domain_name
+#                 )
+#             )
+
+#         return response
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+# @app.get("/get_all_filters", response_model=AllFiltersResponse)
+# def get_all_filters():
+#     try:
+        
+#         # Use the @property methods to get all data
+#         return AllFiltersResponse(
+#             domains=[FilterResponse(filter_name=d.name) for d in db.domains],
+#             languages=[FilterResponse(filter_name=l.name) for l in db.languages],
+#             targets=[
+#                 FilterResponse(filter_name=t.target_name, extra_info=t.target_type)
+#                 for t in db.targets
+#             ],
+#             statuses=[
+#                 FilterResponse(filter_name="COMPLETED"),
+#                 FilterResponse(filter_name="RUNNING"),
+#             ],
+#             plans=[FilterResponse(filter_name=p.plan_name) for p in db.plans],
+#             metrics=[FilterResponse(filter_name=m.metric_name) for m in db.metrics]
+#         )
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/test-runs/{run_name}/summary", response_model=TestRunSummaryResponse)
 def get_test_run_summary(run_name: str):

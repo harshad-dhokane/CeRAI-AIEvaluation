@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import "./TestRunsTable.css";
 import { useNavigate } from "react-router-dom";
 import AppButton from "../common/Button/AppButton";
 import { Pagination } from "react-bootstrap";
 import { API_BASE_URL, API_ENDPOINTS } from "../../config/api";
+import { AllFilters, FilterOption } from "../../types/Filters";
 
 // Define the structure of a test run (for future use)
 interface TestRun {
@@ -17,23 +18,100 @@ interface TestRun {
   
 }
 
-interface Props {
-  filters: Record<string, string>; // e.g. { domain: "qaoncloud.com", target: "api" }
+interface HeaderConfig {
+  key: string;
+  label: string;
+  filterable: boolean;
+  filterType?: 'target' | 'status' | 'domain';
 }
 
-const TestRunsTable: React.FC<Props> = ({filters}) => {
+interface Props {
+  filters: Record<string, string>; // e.g. { domain: "qaoncloud.com", target: "api" }
+  onFilterChange?: (filterType: string, value: string) => void;
+}
+
+const TestRunsTable: React.FC<Props> = ({filters, onFilterChange}) => {
   const navigate = useNavigate();
   const [runs, setRuns] = useState<TestRun[]>([]);
   const [filteredRuns, setFilteredRuns] = useState<TestRun[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-
-  // Table headers
-  const headers = [
-    "Run Id", "Run Name", "Target", "Started At","Ended At", 
-    "Duration", "Status", "Domain",  "Report"
+  const [availableFilters, setAvailableFilters] = useState<AllFilters>({
+    domains: [],
+    languages: [],
+    targets: [],
+    plans: [],
+    metrics: [],
+    statuses: [],
+  });
+  const [filtersLoading, setFiltersLoading] = useState(true);
+  const [openFilterColumn, setOpenFilterColumn] = useState<string | null>(null);
+  const filterRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const FILTER_KEY_MAP: Record<string, keyof AllFilters> = {
+    domain: "domains",
+    target: "targets",
+    status: "statuses",
+  };
+  // Table headers with filter configuration
+  const headers: HeaderConfig[] = [
+    { key: "run_id", label: "Run Id", filterable: false },
+    { key: "run_name", label: "Run Name", filterable: false },
+    { key: "target", label: "Target", filterable: true, filterType: "target" },
+    { key: "start_ts", label: "Started At", filterable: false },
+    { key: "end_ts", label: "Ended At", filterable: false },
+    { key: "duration", label: "Duration", filterable: false },
+    { key: "status", label: "Status", filterable: true, filterType: "status" },
+    { key: "domain", label: "Domain", filterable: true, filterType: "domain" },
+    { key: "report", label: "Report", filterable: false },
   ];
+
+  // Fetch available filters
+  useEffect(() => {
+    setFiltersLoading(true);
+    fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`)
+      .then((res) => res.json())
+      .then((data: AllFilters) => {
+        setAvailableFilters(data);
+        setFiltersLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching filters:", err);
+        setFiltersLoading(false);
+      });
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openFilterColumn && filterRefs.current[openFilterColumn]) {
+        const filterElement = filterRefs.current[openFilterColumn];
+        if (filterElement && !filterElement.contains(event.target as Node)) {
+          setOpenFilterColumn(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openFilterColumn]);
+
+  // Handle filter change
+  const handleFilterChange = (filterType: string, value: string) => {
+    onFilterChange?.(filterType, value);
+    setOpenFilterColumn(null); // Close dropdown after selection
+  };
+
+  // Handle filter clear
+  const handleFilterClear = (filterType: string) => {
+    onFilterChange?.(filterType, "");
+    setOpenFilterColumn(null);
+  };
+
+  // Toggle filter dropdown
+  const toggleFilterDropdown = (columnKey: string) => {
+    setOpenFilterColumn(openFilterColumn === columnKey ? null : columnKey);
+  };
 
   // Get Data from backend
   useEffect(() => {
@@ -68,34 +146,6 @@ const TestRunsTable: React.FC<Props> = ({filters}) => {
     pageNumbers.push(i);
   }
   
-  
-  // Apply filters when they change
-  // useEffect(() => {
-  //   if (Object.keys(filters).length === 0) {
-  //     setFilteredRuns(runs);
-  //     return;
-  //   }
-    
-  //   const filtered = runs.filter(run => {
-  //     return Object.entries(filters).every(([key, value]) => {
-  //       if (!value) return true;
-        
-  //       switch(key) {
-  //         case 'domain':
-  //           return run.domain.toLowerCase() === value.toLowerCase();
-  //         case 'target':
-  //           return run.target.toLowerCase() === value.toLowerCase();
-  //         case 'language':
-  //           // Assuming language might be in another property or needs special handling
-  //           return true;
-  //         default:
-  //           return true;
-  //       }
-  //     });
-  //   });
-    
-  //   setFilteredRuns(filtered);
-  // }, [filters, runs]);
   return (
     <div>
       <div className="table-responsive table-container mb-3">
@@ -103,8 +153,58 @@ const TestRunsTable: React.FC<Props> = ({filters}) => {
           <thead className="table-light">
             <tr>
               {headers.map(header => (
-                <th key={header} scope="col">
-                  {header}
+                <th 
+                  key={header.key} 
+                  scope="col"
+                  className={header.filterable ? "filterable-header" : ""}
+                >
+                  <div className="header-content">
+                    <span>{header.label}</span>
+                    {header.filterable && header.filterType && (
+                      <div className="filter-wrapper" ref={(el) => {
+                        filterRefs.current[header.key] = el;
+                      }}>
+                        <button
+                          className="filter-trigger"
+                          onClick={() => toggleFilterDropdown(header.key)}
+                          title={`Filter by ${header.label}`}
+                        >
+                          <i className={`bi bi-funnel${filters[header.filterType] ? '-fill' : ''}`}></i>
+                        </button>
+                        
+                        {openFilterColumn === header.key && (
+                          <div className="filter-dropdown">
+                            <div className="filter-options">
+                              <select
+                                className="form-select form-select-sm"
+                                value={filters[header.filterType] || ""}
+                                onChange={(e) => handleFilterChange(header.filterType!, e.target.value)}
+                                disabled={filtersLoading}
+                              >
+                                <option value="">All {header.label}</option>
+                                {availableFilters[FILTER_KEY_MAP[header.filterType!]]?.map(
+                                  (opt: FilterOption) => (
+                                    <option key={opt.filter_name} value={opt.filter_name}>
+                                      {opt.filter_name}
+                                    </option>
+                                  )
+                                )}
+                              </select>
+                              
+                              {filters[header.filterType] && (
+                                <button
+                                  className="btn btn-sm btn-outline-secondary mt-2 w-100"
+                                  onClick={() => handleFilterClear(header.filterType!)}
+                                >
+                                  Clear Filter
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </th>
               ))}
             </tr>

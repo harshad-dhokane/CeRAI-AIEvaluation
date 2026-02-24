@@ -131,6 +131,104 @@
 }
 
 
+/* Column header filter styles */
+.filterable-header {
+  position: relative;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.filter-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.filter-trigger {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6c757d;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+  color: #495057;
+}
+
+.filter-trigger:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+.filter-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1050;
+  min-width: 200px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 4px;
+}
+
+.filter-options {
+  padding: 12px;
+}
+
+.filter-options .form-select {
+  font-size: 14px;
+}
+
+.filter-options .btn {
+  font-size: 12px;
+}
+
+/* Funnel icon states */
+.bi-funnel-fill {
+  color: #0d6efd !important;
+}
+
+/* Loading state */
+.filter-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ensure table doesn't shift when filters are open */
+.table {
+  table-layout: fixed;
+}
+
+.filterable-header {
+  min-width: 120px;
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .filter-dropdown {
+    min-width: 150px;
+  }
+}
+
+
 @media (max-width: 1024px) {
   .content-wrapper {
     padding: 0 16px;
