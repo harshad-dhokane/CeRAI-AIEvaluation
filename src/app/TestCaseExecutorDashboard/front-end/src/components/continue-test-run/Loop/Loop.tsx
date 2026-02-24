@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import {WS_BASE_URL,} from "../../../config/api"
+
 interface LoopProps {
   isRunning: boolean;
   totalTestCases: number;
   stepsPerTestCase: number; // 👈 how many steps each TC has
   stepNames?: string[]; // 👈 Names for each step
-  planName?: string;     // 👈 add
-  metricName?: string;   // 👈 add
-  
 }
 
 type StepStatus = "PENDING" | "RUNNING" | "DONE" | "FAILED";
@@ -17,8 +14,6 @@ const Loop: React.FC<LoopProps> = ({
   totalTestCases,
   stepsPerTestCase,
   stepNames: propStepNames,
-  planName,
-  metricName
 }) => {
   const [currentTestCase, setCurrentTestCase] = useState(0);
   // Track status for each step individually
@@ -49,7 +44,7 @@ const Loop: React.FC<LoopProps> = ({
   useEffect(() => {
     if (!isRunning) return;
 
-    const ws = new WebSocket(`${WS_BASE_URL}/ws/test-run`);
+    const ws = new WebSocket("ws://localhost:7000/ws/test-run");
 
     ws.onopen = () => {
       console.log("✅ WebSocket connected");
@@ -152,7 +147,7 @@ const Loop: React.FC<LoopProps> = ({
           borderRadius: '4px',
           fontWeight: 500
         }}>
-          {planName} {metricName && `• ${metricName}`}
+          Responsible_AI • Inclusivity
         </div>
       </div>
       

@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import "./TestRunsTable.css";
 import { useNavigate } from "react-router-dom";
+import AppButton from "../common/Button/AppButton";
+import { Pagination } from "react-bootstrap";
+import { API_BASE_URL, API_ENDPOINTS } from "../../config/api";
 
 // Define the structure of a test run (for future use)
 interface TestRun {
@@ -37,7 +40,7 @@ const TestRunsTable: React.FC<Props> = ({filters}) => {
     setLoading(true);
     
     const params = new URLSearchParams(filters).toString();
-    const url = `http://localhost:7000/get_all_test_runs?${params}`;
+    const url = `${API_BASE_URL}${API_ENDPOINTS.GET_ALL_TEST_RUNS}?${params}`;
     
     fetch(url)
       .then(res => res.json())
@@ -136,7 +139,7 @@ const TestRunsTable: React.FC<Props> = ({filters}) => {
                       className="report-button"
                       onClick={() => {
                         const link = document.createElement("a");
-                        link.href = `http://localhost:8000/test-runs/${run.run_name}/evaluation-report`;
+                        link.href = API_ENDPOINTS.DOWNLOAD_REPORT(run.run_name);;
                         link.setAttribute(
                           "download",
                           `${run.run_name}-evaluation.xlsx`

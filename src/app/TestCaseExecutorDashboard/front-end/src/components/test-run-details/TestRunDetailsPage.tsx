@@ -7,7 +7,7 @@ import DetailCard from "../common/DetailCard/DetailCard";
 import RunDetailsFilters from "../common/Filters/FiltersRunDet";
 import AppButton from "../common/Button/AppButton";
 import { useNavigate } from "react-router-dom";
-
+import { API_BASE_URL, API_ENDPOINTS } from "../../config/api";
 
 /* ======================
    TYPES
@@ -86,7 +86,7 @@ const RunDetails: React.FC = () => {
   };
 
   useEffect(() => {
-    fetch("http://localhost:7000/get_all_filters")
+    fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`)
       .then((res) => res.json())
       .then((data) => {
         setFiltersData({
@@ -110,12 +110,9 @@ const RunDetails: React.FC = () => {
     const params = new URLSearchParams();
     if (activeFilters.metric) params.append("metric", activeFilters.metric);
     if (activeFilters.status) params.append("status", activeFilters.status);
-
-    fetch(
-      `http://localhost:7000/test-runs/${encodeURIComponent(
-        runName
-      )}?${params.toString()}`
-    )
+    const query = params.toString();
+    
+    fetch(API_ENDPOINTS.GET_TEST_RUN_DETAILS(runName, query))
       .then((res) => {
         if (!res.ok) throw new Error(`API ${res.status}`);
         return res.json();

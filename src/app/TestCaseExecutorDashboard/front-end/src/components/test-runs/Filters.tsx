@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from "react";
 import "./Filters.css";
 import { AllFilters } from "../../types/Filters";
+import { useNavigate } from "react-router-dom";
 import FilterSelect from "../common/Filters/Filters";
 import AppButton from "../common/Button/AppButton";
-import { useNavigate } from "react-router-dom";
-
+import { API_BASE_URL, API_ENDPOINTS } from "../../config/api";
 interface FiltersProps {
   onFilterChange?: (filterType: string, value: string) => void;
 }
 
 const Filters: React.FC<FiltersProps> = ({ onFilterChange }) => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<AllFilters>({
     domains: [],
     languages: [],
@@ -19,23 +20,20 @@ const Filters: React.FC<FiltersProps> = ({ onFilterChange }) => {
     statuses: [],
   });
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+
 
   useEffect(() => {
-    const fetchFilters = async () => {
-      try {
-        setIsLoading(true);
-        const res = await fetch("http://localhost:7000/get_all_filters");
-        if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
+    setIsLoading(true);
+    fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`)
+      .then((res) => res.json())
+      .then((data: AllFilters) => {
         setFilters(data);
-      } catch (err) {
-        console.error("Error fetching filters:", err);
-      } finally {
         setIsLoading(false);
-      }
-    };
-    fetchFilters();
+      })
+      .catch((err) => {
+        console.error("Error fetching filters:", err);
+        setIsLoading(false);
+      });
   }, []);
 
   const filterConfigs = [
@@ -96,6 +94,8 @@ const Filters: React.FC<FiltersProps> = ({ onFilterChange }) => {
       </div>
 
     </div>
+    
+    
   );
 };
 

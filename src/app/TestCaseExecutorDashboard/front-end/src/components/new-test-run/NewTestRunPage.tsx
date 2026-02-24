@@ -1,15 +1,16 @@
 import React,{useState, useEffect} from 'react';
 import './NewTestRunPage.css';
-
+import { API_BASE_URL, API_ENDPOINTS,WS_BASE_URL } from "../../config/api";
 // Import only the Bootstrap CSS for the select components
 
 import CustomSelect from './CustomSelect/CustomSelect';
 import Loop from './Loop/Loop';
 
 interface RunFormData {
+  runName?: string;   // 👈 add this
   target: string;
   testPlan: string; 
-  testCaseId: number | null;
+  testCaseId: string ;
   metric: string;     // ✅ name
   maxTestCases: string;
   domain: string;
@@ -36,27 +37,27 @@ const NewTestRunPage: React.FC = () => {
   const metrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score'];
   const maxTestCases = ['10', '20', '30', '50', '100'];
   const domains = ['E-commerce', 'Healthcare', 'Finance', 'Education'];
-  const languages = ['English', 'Spanish', 'French', 'German', 'Chinese'];
+  const languages = ['Tamil', 'Hindi', 'Assamese', 'Bengali', 'Sindhi', 'Bodo'];
   const [isRunning, setIsRunning] = useState(false);
   const [totalTestCases, setTotalTestCases] = useState(0);
   const [filters, setFilters] = useState<AllFiltersResponse | null>(null);
   const [planMetrics, setPlanMetrics] = useState<string[]>([]);
   
   const [formData, setFormData] = useState<RunFormData>({
+    runName: "",   
     target: "",
     testPlan: "",
-    testCaseId:null,
-    
+    testCaseId:"",
     metric: "",
-    maxTestCases: "10", // 👈 default selected
+    maxTestCases: "10", 
     domain: "",
     language: "",
   });
-  const isStartDisabled = !formData.testPlan || isRunning
+  const isStartDisabled = !formData.testPlan || !formData.target  || isRunning
   useEffect(() => {
   const fetchFilters = async () => {
     try {
-      const res = await fetch("http://localhost:7000/get_all_filters");
+      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`);
       const data: AllFiltersResponse = await res.json();
       setFilters(data);
     } catch (err) {
@@ -69,7 +70,7 @@ const NewTestRunPage: React.FC = () => {
 const fetchMetricsByPlan = async (planName: string) => {
   try {
     const res = await fetch(
-      `http://localhost:7000/get_metrics_by_plan/${planName}`
+      `${API_BASE_URL}/get_metrics_by_plan/${planName}`
     );
     const data = await res.json();
     setPlanMetrics(data.map((m: any) => m.filter_name));
@@ -92,8 +93,8 @@ const handleChange = (key: string, value: any) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsRunning(true); 
-    const res = await fetch("http://localhost:7000/start-run", {
+    
+    const res = await fetch(`${API_BASE_URL}/start-run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -102,12 +103,15 @@ const handleChange = (key: string, value: any) => {
     });
 
     const runData = await res.json(); // <-- this should now include runName, runId, testPlanId, metricId
-    console.log("POST /start-run response:", runData);
+     if (!res.ok) {
+      alert(runData.detail || "Failed to start run");
+      return;  // 🛑 STOP here
+    }
     setTotalTestCases(runData.totalTestCases);
     setIsRunning(true); // now we can start the Loop component
 
     // 2️⃣ Open WebSocket to get live updates
-    const ws = new WebSocket("ws://localhost:7000/ws/test-run");
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/test-run`);
 
     ws.onopen = () => {
       console.log("WebSocket connected, sending run info");
@@ -133,16 +137,19 @@ const handleChange = (key: string, value: any) => {
       <h1>Create New Test Run</h1>
       <p className="subtitle">Configure and start AI evaluation run</p>
       
-      <div className="form-group">
+      
+
+      <form className="filters-container" onSubmit={handleSubmit}>
+        <div className="form-group">
         <label>Test Run Name</label>
         <input 
           type="text" 
           className="form-input" 
-          defaultValue="Regression test" 
+          placeholder="Enter run name (optional)"
+          value={formData.runName}
+          onChange={(e) => handleChange("runName", e.target.value)}
         />
       </div>
-
-      <form className="filters-container" onSubmit={handleSubmit}>
         <div className="filters-row">
           <div className="filter-item">
             <label>Target</label>
@@ -164,12 +171,12 @@ const handleChange = (key: string, value: any) => {
           <div className="filter-item">
             <label>Test Case ID</label>
             <input
-              type="number"
+              type="text"
               placeholder="Enter Test Plan ID"
               value={formData.testCaseId?? ""}
               disabled={!formData.testPlan}
               onChange={(e) =>
-                handleChange("testCaseId", Number(e.target.value))
+                handleChange("testCaseId", e.target.value)
               }
             />
           </div>
@@ -221,7 +228,9 @@ const handleChange = (key: string, value: any) => {
           Start Run
         </button>
       </form>
-      {isRunning && <Loop isRunning={isRunning} totalTestCases={totalTestCases} stepsPerTestCase={4} stepNames={["Initialize", "Validate", "Process", "Finalize"]}/>}       
+      {isRunning && <Loop isRunning={isRunning} totalTestCases={totalTestCases} stepsPerTestCase={4} 
+        stepNames={["Prepare", "Finding elements", "Execute", "Store"]} planName={formData.testPlan}   
+        metricName={formData.metric}/>}       
       
     </div>
   );

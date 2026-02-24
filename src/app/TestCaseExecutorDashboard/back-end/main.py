@@ -1,13 +1,13 @@
 import os
-from fastapi import FastAPI, HTTPException, Query, WebSocket, BackgroundTasks,WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, WebSocket, BackgroundTasks,WebSocketDisconnect, Request
 from fastapi.responses import FileResponse
 from services.ws_manager import ws_manager 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from typing import Optional, List
 import tempfile
 import os
 # import mysql.connector
-
+import json
 import uvicorn
 import asyncio
 # from mysql.connector import Error
@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import sys
 import randomname
 from collections import defaultdict
-from schemas import TestRunResponse,TestRunDetailsResponse,FilterResponse,AllFiltersResponse,TestRunSummaryResponse,TestRunFullResponse,RunEvaluationSummaryResponse,EvaluationItemResponse,ConversationResponse,TestCaseResponse,FullConversationResponse, TimelineEvent,NewTestRun
+from schemas import TestRunResponse,TestRunDetailsResponse,FilterResponse,AllFiltersResponse,TestRunSummaryResponse,TestRunFullResponse,RunEvaluationSummaryResponse,EvaluationItemResponse,ConversationResponse,TestCaseResponse,FullConversationResponse, TimelineEvent,NewTestRun,ContinueRunRequest
 load_dotenv()
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 import datetime
@@ -26,6 +26,7 @@ from lib.data import Target, Run, RunDetail, Conversation
 
 from lib.orm.tables import TestRuns
 from lib.interface_manager import InterfaceManagerClient  # Import the InterfaceManagerClient from the lib directory
+from apis.testruns import router as testruns_router
 
 # db_url = (
 #             f"mysql+mysqlconnector://"
@@ -36,11 +37,40 @@ from lib.interface_manager import InterfaceManagerClient  # Import the Interface
 #             f"{os.getenv('DB_NAME')}"
 #         )
 
-db_file = "AIEvaluationData.db"
+
+## Configure DB and port connection  (using config.json for flexibility)
+
+config_path = os.path.join(os.path.dirname(__file__), "config.json")
+try:
+    with open(config_path, "r") as f:
+        config = json.load(f)
+except FileNotFoundError:
+    config = {}
+
+db_cfg = config.get("db", {})
+engine_type = db_cfg.get("engine_type", "sqlite").lower()
+print("this",sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))))
+port_config = config.get("port", {})
+BACKEND_PORT = int(port_config.get("back-end", 7000))
+
+if engine_type == "sqlite":
+    
+    db_file = "AIEvaluationData.db"
 
 # Resolve project root (this file → importer → app → src → project_root)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+print(f"Project root resolved to: {project_root}")
 
+back_end_root=os.path.abspath(os.path.join(os.path.dirname(__file__)))
+print(f"Back-end root resolved to: {back_end_root}")
+
+template_path = os.path.join(
+    back_end_root,
+    "templates",
+    "Reports.xlsx"
+)
+
+wb = load_workbook(template_path)
 
 # Place DB inside project_root/data
 db_folder = os.path.join(project_root, "data")
@@ -58,17 +88,19 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React
+    allow_origins=["*"],  # React
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(testruns_router)
 
-# def run_execute_testcases(*args):
-#     import asyncio
-#     asyncio.run(execute_testcases(*args))
 
+def load_config():
+    with open(config_path , "r") as f:
+        return json.load(f)
+    
 ## WebSocket for real-time updates
 
 @app.websocket("/ws/test-run")
@@ -125,81 +157,6 @@ def get_all_test_runs(
 
         return response
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.get(
-    "/test-runs/{run_name}",
-    response_model=TestRunFullResponse
-)
-def get_test_run(
-    run_name: str,
-    metric: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
-    ):
-    try:
-        
-        print(metric, status)
-        # ---------- RUN SUMMARY ----------
-        run = db.get_run_by_name(run_name)
-        if not run:
-            raise HTTPException(status_code=404, detail="Run not found")
-
-        domain_name = None
-        if getattr(run, "target_id", None):
-            target = db.get_target_by_id(run.target_id)
-            if target:
-                domain_name = getattr(target, "target_domain", None)
-
-        summary = TestRunSummaryResponse(
-            run_id=run.run_id,
-            run_name=run.run_name,
-            target=run.target,
-            domain=domain_name,
-            status=run.status,
-            start_ts=run.start_ts,
-            end_ts=run.end_ts
-        )
-
-        # ---------- RUN DETAILS ----------
-        details = db.get_all_run_details_by_run_name(run_name)
-        
-        details_response = []
-        if metric:
-            details = [d for d in details if d.metric_name == metric]
-
-        if status:
-            details = [d for d in details if d.status == status]
-            
-        for d in details:
-            score = None
-
-            if d.conversation_id:
-                conv = db.get_conversation_by_id(d.conversation_id)
-                if conv and conv.evaluation_score is not None:
-                    score = float(conv.evaluation_score)
-
-            details_response.append(
-                TestRunDetailsResponse(
-                    run_name=d.run_name,
-                    testcase_name=d.testcase_name,
-                    metric_name=d.metric_name,
-                    plan_name=d.plan_name,
-                    conversation_id=d.conversation_id,
-                    status=d.status,
-                    detail_id=d.detail_id,
-                    score=score
-                )
-            )
-
-        # ---------- FINAL RESPONSE ----------
-        return TestRunFullResponse(
-            summary=summary,
-            details=details_response
-        )
-
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -319,7 +276,7 @@ def download_evaluation_report(run_name: str):
         run = db.get_run_by_name(run_name)
         if not run:
             raise HTTPException(status_code=404, detail="Run not found")
-
+        
         details = db.get_all_run_details_by_run_name(run_name)
         plan_name = details[0].plan_name if details else None
         # Cache conversations
@@ -331,13 +288,12 @@ def download_evaluation_report(run_name: str):
                     d.conversation_id
                 )
 
-        wb = Workbook()
+        
 
         # =================================================
         # SHEET 1 : RUN SUMMARY (NO BS)
         # =================================================
-        ws_summary = wb.active
-        ws_summary.title = "Run_Summary"
+        ws_summary = wb["Run_Summary"]
 
         # Collect counts
         testcases = set()
@@ -347,28 +303,21 @@ def download_evaluation_report(run_name: str):
             if conv and getattr(conv, "testcase", None):
                 testcases.add(conv.testcase)
 
-        ws_summary.append(["Run Name", run.run_name])
-        ws_summary.append(["Plan Name", plan_name])
-        ws_summary.append(["Status", run.status])
-        ws_summary.append(["Total Testcases", len(testcases)])
-        ws_summary.append(["Total Metrics", total_metrics])
+        ws_summary["B1"] = run.run_name
+        ws_summary["B2"] = plan_name
+        ws_summary["B3"] = run.status
+        ws_summary["B4"] = len(testcases)
+        ws_summary["B5"] = total_metrics
 
         # =================================================
         # SHEET 2 : EVALUATION DETAILS (TESTCASE + METRIC)
         # =================================================
-        ws_details = wb.create_sheet(title="Evaluation_Details")
+        
 
-        ws_details.append([
-            "Detail ID",
-            "Testcase",
-            "Metric",
-            "Evaluation Score",
-            "Evaluation Reason",
-            "Evaluation Time",
-            "Agent Response",
-            "User Prompt",
-            "System Prompt"
-        ])
+        ws_details = wb["Evaluation_Details"]
+
+        # Start inserting after header row
+        start_row = ws_details.max_row + 1
 
         for d in details:
             conv = conversation_cache.get(d.conversation_id)
@@ -381,7 +330,9 @@ def download_evaluation_report(run_name: str):
                 or getattr(conv, "metric", None)
                 or getattr(conv, "metric_name", None)
             )
+
             testcase_name = getattr(conv, "testcase", None)
+
             if testcase_name not in testcase_prompt_cache:
                 testcase = db.get_testcase_by_name(testcase_name)
 
@@ -395,7 +346,9 @@ def download_evaluation_report(run_name: str):
                         "user_prompt": getattr(testcase.prompt, "user_prompt", None),
                         "system_prompt": getattr(testcase.prompt, "system_prompt", None),
                     }
-            prompts = testcase_prompt_cache[testcase_name]        
+
+            prompts = testcase_prompt_cache[testcase_name]
+
             ws_details.append([
                 d.detail_id,
                 getattr(conv, "testcase", None),
@@ -416,7 +369,7 @@ def download_evaluation_report(run_name: str):
         tmp_file.close()
 
         return FileResponse(
-            path=tmp_file.name,
+            tmp_file.name,
             filename=f"{run_name}_evaluation_report.xlsx",
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
@@ -509,6 +462,12 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
         metric_name = data.metric 
         domain_name = data.domain if data.domain else None
         lang_name = data.language if data.language else None
+        provided_run_name = data.runName.strip() if data.runName else None
+        if test_case_id and metric_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide either 'testCaseId' or 'metric', not both."
+            )
         try:
             max_test_cases = int(data.maxTestCases)
             print(max_test_cases)
@@ -519,7 +478,10 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
             )
         ## Create a random name for the run and generating run id
 
-        run_name = randomname.generate('v/*','adj/*','n/*','ip/*')
+        if provided_run_name:
+            run_name = provided_run_name
+        else:
+            run_name = randomname.generate('v/*','adj/*','n/*','ip/*')
         start_time = datetime.now().isoformat()
         run = Run(target=target, run_name=run_name, start_ts=start_time)
         run_id = db.add_or_update_testrun(run)
@@ -533,7 +495,44 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
             return
         print(f"Starting run with Test Plan: {plan_name}")
 
-        if metric_name:
+        if test_case_id:
+            testcases = db.get_testcase_by_name(test_case_id)
+            if not testcases:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Test case ID '{test_case_id}' does not exist"
+                )
+            # is_valid = db.is_testcase_in_testplan(
+            #     test_case_id=test_case_id,
+            #     plan_name=plan_name
+            # )
+
+            # if not is_valid:
+            #     raise HTTPException(
+            #         status_code=400,
+            #         detail=f"Test case '{test_case_id}' is not mapped to test plan '{plan_name}'"
+            #     )
+            testcases = [testcases]
+            total_testcases = len(testcases)
+            print(f"Length of testcases: {len(testcases)}")
+            print(type(testcases))
+            
+            run.status = "RUNNING"
+            db.add_or_update_testrun(run=run)
+            
+            
+            background_tasks.add_task(
+                execute_testcases,
+                run_name,
+                run_id,
+                plan_name,
+                target,
+                
+                testcases,
+                run
+            )
+
+        elif metric_name:
             # metric_name = db.get_metric_name(metric_id=metric_id)  
             is_metric_in_plan = db.is_metric_in_testplan(metric_name=metric_name, plan_name=plan_name)  
             if not is_metric_in_plan:
@@ -636,7 +635,7 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
                 testcases,
                 run
             )
-
+        
         return {
             "status": "success",
             "runId": run_id,
@@ -648,11 +647,98 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
             
         }
         
-                
-        
     else:
         return("Test Plan ID is mandatory")
 
+@app.post("/continue-run")
+def continue_run(data: ContinueRunRequest):
+    # 1️⃣ Get run by name
+    run = db.get_run_by_name(data.run_name)
+
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    # 2️⃣ Get run details
+    details = db.get_run_details_by_run_id(run.run_id)
+    print(f"Run {data.run_name} has {run} details")
+    print(f"Found {len(details)} details for run {data.run_name}")
+    return {
+        "run": run,
+        "details": details
+    }
+
+@app.post("/continue-run-with-plan")
+def continue_run_with_plan(data: NewTestRun, background_tasks: BackgroundTasks):
+
+    run = db.get_run_by_name(data.runName)
+
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    # 🔒 Safety check
+    if run.target != data.target:
+        raise HTTPException(
+            status_code=400,
+            detail="Target mismatch with existing run"
+        )
+
+    # 🔄 Reopen if completed
+    if run.status == "COMPLETED":
+        run.status = "RUNNING"
+        run.end_ts = None
+        db.add_or_update_testrun(run=run, override=True)
+
+    run_id = run.run_id
+    run_name = run.run_name
+
+    plan_name = data.testPlan
+    metric_name = data.metric
+
+    if not plan_name:
+        raise HTTPException(status_code=400, detail="Test Plan is required")
+
+    try:
+        max_test_cases = int(data.maxTestCases)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid maxTestCases")
+
+    # 🔥 Fetch testcases
+    if metric_name:
+        testcases = db.get_testcases_by_metric(
+            metric_name=metric_name,
+            n=max_test_cases,
+            lang_names=data.language,
+            domain_name=data.domain
+        )
+    else:
+        testcases = db.get_testcases_by_testplan(
+            plan_name=plan_name,
+            n=max_test_cases,
+            lang_names=data.language,
+            domain_name=data.domain
+        )
+
+    if not testcases:
+        raise HTTPException(status_code=400, detail="No testcases found")
+
+    # 🚀 Launch background execution
+    background_tasks.add_task(
+        execute_testcases,
+        run_name,
+        run_id,
+        plan_name,
+        data.target,
+        testcases,
+        run
+    )
+
+    return {
+        "status": "continued",
+        "runId": run_id,
+        "runName": run_name,
+        "addedPlan": plan_name,
+        "totalTestCases": len(testcases)
+    }
 
 
 async def execute_testcases(
@@ -668,8 +754,18 @@ async def execute_testcases(
 
     agent_name = target
     application_name = target
-    application_url = "https://web.whatsapp.com"
-    application_type = "WHATSAPP_WEB"
+    target_obj = db.get_target_by_name(target)
+    application_url = target_obj.target_url
+    APPLICATION_TYPE_MAP = {
+        "WhatsApp": "WHATSAPP_WEB",
+        "WebApp": "WEBAPP",
+        "API": "API"
+    }
+
+    if target_obj.target_type not in APPLICATION_TYPE_MAP:
+        raise ValueError(f"Unsupported target_type: {target_obj.target_type}")
+
+    application_type = APPLICATION_TYPE_MAP[target_obj.target_type]
 
     client = InterfaceManagerClient(
         base_url="http://localhost:8000",
@@ -690,7 +786,7 @@ async def execute_testcases(
     client.apply_server_config()
 
     for index, testcase in enumerate(testcases, start=1):
-        print(f"⚙️ Running testcase: {testcase.name}")
+        # print(f"⚙️ Running testcase: {testcase.name}")
 
         rundetail = RunDetail(
             run_name=run_name,
@@ -794,14 +890,14 @@ async def execute_testcases(
             "runId": run_id,
             "current": index
         })
-    rundetail.status = "COMPLETED"
-    db.add_or_update_testrun_detail(rundetail)
-    run.end_ts = datetime.now().isoformat()
-    run.status = "COMPLETED"
-    db.add_or_update_testrun(run=run)
+        rundetail.status = "COMPLETED"
+        db.add_or_update_testrun_detail(rundetail)
+        run.end_ts = datetime.now().isoformat()
+        run.status = "COMPLETED"
+        db.add_or_update_testrun(run=run)
     
-        # client.close()
-   
+    client.close()
+    
     print(f"✅ Finished testcase: {testcase.name}")
     await ws_manager.send_all({
         "type": "RUN_FINISHED",
@@ -817,12 +913,30 @@ def get_metrics_by_plan(plan_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/__dev/config")
+def dev_config():
+    if not os.getenv("DEV_CONFIG_ENABLED"):
+        print("Dev config is disabled.")
+        raise HTTPException(status_code=404)
+        
+    print("Accessed dev config endpoint")
+    return load_config()
+    
+@app.post("/__dev/config")
+async def update_config(request: Request):
+    
 
+    data = await request.json()
+
+    with open(config_path, "w") as f:
+        json.dump(data, f, indent=2)
+
+    return {"message": "Config updated"}
 
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=7000,
+        port=BACKEND_PORT,
         reload=True
     )
