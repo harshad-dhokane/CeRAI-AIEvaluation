@@ -4,8 +4,9 @@ import styles from "./TestRunDetails.module.css";
 import Modal from "./Modal";
 import RunTimeline from "./RunTimeline";
 import DetailCard from "../common/DetailCard/DetailCard";
-import Filters from "./Filters";
 import RunDetailsFilters from "../common/Filters/FiltersRunDet";
+import AppButton from "../common/Button/AppButton";
+import { useNavigate } from "react-router-dom";
 import { API_BASE_URL, API_ENDPOINTS } from "../../config/api";
 
 /* ======================
@@ -33,10 +34,6 @@ interface RunDetail {
   score?: number | null;
 }
 
-interface RunDetailsResponse {
-  summary: RunSummary;
-  details: RunDetail[];
-}
 interface FilterOption {
   filter_name: string;
 }
@@ -64,17 +61,12 @@ const RunDetails: React.FC = () => {
     statuses: [],
   });
 
+  const navigate = useNavigate();
+
   const [activeFilters, setActiveFilters] = useState<{
     metric?: string;
     status?: string;
   }>({});
-  useEffect(() => {
-    console.log("🔴 hoveredMetric changed to:", hoveredMetric);
-  }, [hoveredMetric]);
-
-  useEffect(() => {
-    console.log("🔵 hoveredPlan changed to:", hoveredPlan);
-  }, [hoveredPlan]);
   const statusMap = (status: string | null | undefined): "COMPLETED" | "RUNNING" | "FAILED" | undefined => {
     if (status === "COMPLETED" || status === "RUNNING" || status === "FAILED") return status;
     return undefined;
@@ -161,14 +153,20 @@ const RunDetails: React.FC = () => {
     return acc;
   }, {} as Record<string, RunDetail[]>);
   
-  const planNames = Object.keys(groupedByPlan);
-
   return (
     <div className={styles.container}>
+      <h3 className={styles.header}>Test Run Details - <span>{summary.run_name}</span></h3>
       {/* Header Section */}
-      <div className={styles.summaryCard}>
-        <div className={styles.headerRow}>
-          <h1 className={styles.title}>
+      <div className={styles.flex}>
+      <div
+       className={styles.summaryCard}
+      >
+        <div
+        //  className={styles.headerRow}
+        >
+          <h1
+          className={styles.title}
+          >
             {summary.run_name}
           </h1>
           {/* {planNames.length > 0 && (
@@ -179,7 +177,9 @@ const RunDetails: React.FC = () => {
           )} */}
         </div>
 
-        <div className={styles.detailsGrid}>
+        <div
+        // className={styles.detailsGrid}
+        >
           <DetailCard
             label="Target"
             value={summary.target ?? "-"}
@@ -214,7 +214,7 @@ const RunDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* Timeline Section */}
+      {/* Timeline Section
       <RunTimeline 
         runName={summary.run_name} 
         hoveredMetric={hoveredMetric}
@@ -222,114 +222,148 @@ const RunDetails: React.FC = () => {
         onHoverPlan={setHoveredPlan}
         onHoverMetric={setHoveredMetric} 
         
-      />
-
+      /> */}
+      <div className={styles.tableLayout}>
       {/* Filters Section */}
       <div className={styles.filtersContainer}>
         <div className={styles.filtersCard}>
-          <h2 className={styles.filtersTitle}>
+          {/* <h2 className={styles.filtersTitle}>
             <i className="bi-funnel"></i>
             Filter Results
-          </h2>
-          <RunDetailsFilters
-            metrics={filtersData.metrics}
-            statuses={filtersData.statuses}
-            loading={loading}
-            activeFilters={activeFilters}
-            onFilterChange={handleFilterChange}
-          />
+          </h2> */}
+          <div>
+            <RunDetailsFilters
+              metrics={filtersData.metrics}
+              statuses={filtersData.statuses}
+              loading={loading}
+              activeFilters={activeFilters}
+              onFilterChange={handleFilterChange}
+            />
+          </div>
+
         </div>
+          <div>
+            <AppButton
+              label="Continue"
+              variant="outline-secondary"
+              icon="bi-play-fill"
+              size="md"
+              className="new-test-run-btn"
+              // onClick={() => navigate(`/create-test-run`)}
+            />
+          </div>
+
       </div>
 
       {/* Table Section */}
        <section className={styles.tableSection}>
-  <div className={styles.tableContainer}>
-    <div className="table-responsive">
-      <table className="table table-bordered table-hover">
-        <thead>
-          <tr>
-            <th style={{ width: '20%' }}>Plan Name</th>
-            <th>Test Case</th>
-            <th>Metric</th>
-            <th>Score</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {details.length === 0 ? (
-            <tr>
-              <td colSpan={5} className="text-center py-4 text-muted">
-                No test case details found
-              </td>
-            </tr>
-          ) : (
-            Object.entries(groupedByPlan).flatMap(([planName, planDetails]) =>
-              planDetails.map((d, index) => {
-                // ✅ Log info when rendering each row
-                console.log("Rendering rowwwwww:", d.metric_name, "Hovered metric:", hoveredMetric);
-
-                return (
-                  <tr
-                    key={d.detail_id}
-                    role="button"
-                    className={`cursor-pointer ${
-                      hoveredMetric === d.metric_name ? styles.metricRowHover : ""
-                    }`}
-                    data-bs-toggle="modal"
-                    data-bs-target="#conversationModal"
-                    onClick={() => setSelectedConversationId(Number(d.conversation_id))}
-                    onMouseEnter={() => {
-                      console.log("Mouse enter row:", d.metric_name);
-                      setHoveredMetric(d.metric_name);
-                    }}
-                    onMouseLeave={() => {
-                      console.log("Mouse leave row:", d.metric_name);
-                      setHoveredMetric(null);
-                    }}
-                  >
-                    {/* <td >{`Metric: ${d.metric_name}, Hovered: ${hoveredMetric}, Match: ${hoveredMetric === d.metric_name}, ClassName: ${hoveredMetric === d.metric_name ? styles.metricRowHover : "NONE"}`}</td> */}
-                    {index === 0 && (
-                      <td
-                        rowSpan={planDetails.length}
-                        className={`${styles.planCell} align-middle text-center`}
-                        style={{
-                          fontWeight: 500,
-                          borderRight: '1px solid #e2e8f0',
-                          minWidth: '200px',
-                        }}
-                      >
-                        {planName}
-                      </td>
-                    )}
-                    <td className="font-medium text-gray-900">{d.testcase_name}</td>
-                    <td className="text-gray-700">{d.metric_name}</td>
-                    <td className="font-medium text-gray-900">{d.score ?? "-"}</td>
-                    <td>
-                      <span
-                        className={`${styles.statusCell} ${
-                          d.status === "Completed"
-                            ? styles.statusCompleted
-                            : d.status === "FAILED"
-                            ? styles.statusFailed
-                            : styles.statusRunning
-                        }`}
-                      >
-                        {d.status.toLowerCase()}
-                      </span>
+        <div className={styles.tableContainer}>
+          <div className="table-responsive">
+            <table className={styles.resultsTable}>
+              <thead>
+                <tr>
+                  <th>Plan Name</th>
+                  <th>Test Case</th>
+                  <th>Metric</th>
+                  <th>Score</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {details.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className={styles.emptyState}>
+                      No test case details found
                     </td>
                   </tr>
-                );
-              })
-            )
-          )}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
+                ) : (
+                  Object.entries(groupedByPlan).flatMap(([planName, planDetails]) =>
+                    planDetails.map((d, index) => {
+                      const normalizedStatus = d.status.toUpperCase();
+                      const statusClass =
+                        normalizedStatus === "COMPLETED" || normalizedStatus === "SUCCESS"
+                          ? styles.statusCompleted
+                          : normalizedStatus === "FAILED"
+                          ? styles.statusFailed
+                          : normalizedStatus === "NEW"
+                          ? styles.statusNew
+                          : styles.statusRunning;
+
+                      return (
+                        <tr
+                          key={d.detail_id}
+                          role="button"
+                          className={`${styles.tableRow} ${
+                            hoveredMetric === d.metric_name ? styles.metricRowHover : ""
+                          }`}
+                          data-bs-toggle="modal"
+                          data-bs-target="#conversationModal"
+                          onClick={() => setSelectedConversationId(Number(d.conversation_id))}
+                          onMouseEnter={() => setHoveredMetric(d.metric_name)}
+                          onMouseLeave={() => setHoveredMetric(null)}
+                        >
+                          {/* <td >{`Metric: ${d.metric_name}, Hovered: ${hoveredMetric}, Match: ${hoveredMetric === d.metric_name}, ClassName: ${hoveredMetric === d.metric_name ? styles.metricRowHover : "NONE"}`}</td> */}
+                          {index === 0 && (
+                            <td
+                              rowSpan={planDetails.length}
+                              className={`${styles.planCell} align-middle text-center`}
+                            >
+                              {planName}
+                            </td>
+                          )}
+                          <td>{d.testcase_name}</td>
+                          <td>{d.metric_name}</td>
+                          <td>{d.score ?? "-"}</td>
+                          <td>
+                            <span className={`${styles.statusCell} ${statusClass}`}>
+                              {normalizedStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+          {/* Timeline Section
+        <RunTimeline 
+          runName={summary.run_name} 
+          hoveredMetric={hoveredMetric}
+          hoveredPlan={hoveredPlan}
+          onHoverPlan={setHoveredPlan}
+          onHoverMetric={setHoveredMetric} 
+          
+        /> */}
+
+      </section>
+      <RunTimeline 
+          runName={summary.run_name} 
+          hoveredMetric={hoveredMetric}
+          hoveredPlan={hoveredPlan}
+          onHoverPlan={setHoveredPlan}
+          onHoverMetric={setHoveredMetric} 
+          
+      />
+
+      </div>
+      </div>
 
       <Modal conversationId={selectedConversationId} />
+                {/* Timeline Section */}
+        {/* <RunTimeline 
+          runName={summary.run_name} 
+          hoveredMetric={hoveredMetric}
+          hoveredPlan={hoveredPlan}
+          onHoverPlan={setHoveredPlan}
+          onHoverMetric={setHoveredMetric} 
+          
+        /> */}
     </div>
+    
   );
 };
 

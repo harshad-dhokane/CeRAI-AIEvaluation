@@ -6,6 +6,7 @@ from openpyxl import Workbook, load_workbook
 from typing import Optional, List,Literal
 import tempfile
 import os
+import re
 # import mysql.connector
 import json
 import uvicorn
@@ -465,6 +466,10 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
         ### Initialising the form variables
         print("Starting new test run...")
         target = data.target
+        target = re.sub(r"\s*\(.*?\)", "", target)
+
+       
+        
         plan_name = data.testPlan
         test_case_id = data.testCaseId
         metric_name = data.metric 
@@ -769,7 +774,7 @@ async def execute_testcases(
         "WebApp": "WEBAPP",
         "API": "API"
     }
-
+    print("target object",target_obj)
     if target_obj.target_type not in APPLICATION_TYPE_MAP:
         raise ValueError(f"Unsupported target_type: {target_obj.target_type}")
 
