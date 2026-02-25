@@ -5,8 +5,10 @@ from services.ws_manager import ws_manager
 from openpyxl import Workbook, load_workbook
 from typing import Optional, List,Literal
 import tempfile
+import socket
 import os
 import re
+from urllib.parse import urlparse
 # import mysql.connector
 import json
 import uvicorn
@@ -65,6 +67,18 @@ if engine_type == "sqlite":
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
 print(f"Project root resolved to: {project_root}")
 
+interface_manager_root=os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+interface_manager_config = os.path.join(
+    interface_manager_root,
+    "interface_manager",
+    "config.json"
+)
+
+if not os.path.exists(interface_manager_config):
+    raise RuntimeError(
+        f"Interface Manager config.json not found at {interface_manager_config}"
+    )
+
 back_end_root=os.path.abspath(os.path.join(os.path.dirname(__file__)))
 print(f"Back-end root resolved to: {back_end_root}")
 
@@ -104,7 +118,56 @@ app.include_router(filters_router)
 def load_config():
     with open(config_path , "r") as f:
         return json.load(f)
-    
+
+## to check if interface_manager is running ##
+
+def ensure_interface_manager_running(
+    config_path: str,
+    timeout: float = 1.5
+):
+    # 1️⃣ Read config.json
+    try:
+        with open(config_path, "r") as f:
+            config = json.load(f)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to read Interface Manager config: {str(e)}"
+        )
+
+    # 2️⃣ Extract base_url
+    base_url = config.get("base_url")
+    if not base_url:
+        raise HTTPException(
+            status_code=500,
+            detail="base_url missing in Interface Manager config"
+        )
+
+    # 3️⃣ Parse host & port
+    parsed = urlparse(base_url)
+    host = parsed.hostname
+    port = parsed.port
+
+    if not host or not port:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Invalid base_url in Interface Manager config: {base_url}"
+        )
+
+    # 4️⃣ TCP port check
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+
+    try:
+        result = sock.connect_ex((host, port))
+        if result != 0:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Interface Manager is not running at {host}:{port}"
+            )
+    finally:
+        sock.close()
+
 ## WebSocket for real-time updates
 
 @app.websocket("/ws/test-run")
@@ -462,13 +525,13 @@ def get_metrics_by_plan(plan_name: str):
 
 @app.post("/start-run")
 def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
+    ensure_interface_manager_running(interface_manager_config)
     if data.testPlan:
         ### Initialising the form variables
         print("Starting new test run...")
         target = data.target
         target = re.sub(r"\s*\(.*?\)", "", target)
 
-       
         
         plan_name = data.testPlan
         test_case_id = data.testCaseId
@@ -925,6 +988,29 @@ def get_metrics_by_plan(plan_name: str):
         return [FilterResponse(filter_name=m) for m in metrics]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/targets/{target_name}/metadata")
+def get_target_metadata(target_name: str):
+
+    clean_target_name = re.sub(
+        r"\s*\(.*?\)", 
+        "", 
+        target_name
+    ).strip()
+
+    target = db.get_target_by_name(clean_target_name)
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+
+    return {
+        "domains": (
+            [target.target_domain]
+            if isinstance(target.target_domain, str)
+            else target.target_domain
+        ),
+        "languages": target.target_languages or []
+    }
 
 @app.get("/__dev/config")
 def dev_config():

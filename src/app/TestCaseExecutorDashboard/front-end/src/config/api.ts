@@ -16,7 +16,10 @@ export const API_BASE_URL =
     }`,
     GET_METRICS_BY_PLAN: (planName: string) =>
     `${API_BASE_URL}/get_metrics_by_plan/${planName}`,
+    GET_TARGET_METADATA: (targetName: string) =>
+    `${API_BASE_URL}/targets/${encodeURIComponent(targetName)}/metadata`,
     START_RUN: `${API_BASE_URL}/start-run`,
+    
 }  
 
 

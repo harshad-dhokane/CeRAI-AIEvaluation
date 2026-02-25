@@ -18,11 +18,12 @@ interface Props {
   hoveredPlan?: string | null;        // Make optional with ?
   onHoverPlan?: (plan: string | null) => void;  // Make optional with ?
   onHoverMetric: (metric: string | null) => void; // ✅ ADD
+  onDurationCalculated?: (seconds: number) => void;
 }
 
 /* ===== COMPONENT ===== */
 
-const RunTimeline: React.FC<Props> = ({ runName, hoveredMetric, onHoverMetric }) => {
+const RunTimeline: React.FC<Props> = ({ runName, hoveredMetric, onHoverMetric,onDurationCalculated }) => {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
 
   useEffect(() => {
@@ -30,6 +31,41 @@ const RunTimeline: React.FC<Props> = ({ runName, hoveredMetric, onHoverMetric })
       .then(res => res.json())
       .then(setEvents);
   }, [runName]);
+
+  /* ================= CALCULATE TOTAL EXECUTION TIME ================= */
+
+  useEffect(() => {
+  if (!events.length) return;
+
+  // Group by plan first
+  const eventsByPlan = events.reduce<Record<string, TimelineEvent[]>>(
+    (acc, e) => {
+      acc[e.plan_name] ||= [];
+      acc[e.plan_name].push(e);
+      return acc;
+    },
+    {}
+  );
+
+  let totalMs = 0;
+
+  Object.values(eventsByPlan).forEach(planEvents => {
+    const start = Math.min(
+      ...planEvents.map(e => new Date(e.prompt_ts!).getTime())
+    );
+
+    const end = Math.max(
+      ...planEvents.map(e => new Date(e.response_ts!).getTime())
+    );
+
+    totalMs += (end - start);
+  });
+
+  const totalSeconds = Math.round(totalMs / 1000);
+
+  onDurationCalculated?.(totalSeconds);
+
+}, [events, onDurationCalculated]);
 
   if (events.length === 0) return null;
 

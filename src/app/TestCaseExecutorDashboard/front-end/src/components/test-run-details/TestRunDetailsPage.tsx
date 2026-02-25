@@ -96,7 +96,7 @@ const RunDetails: React.FC = () => {
       })
       .catch(console.error);
   }, []);
-
+  
   /* ======================
      FETCH RUN DETAILS
   ====================== */
