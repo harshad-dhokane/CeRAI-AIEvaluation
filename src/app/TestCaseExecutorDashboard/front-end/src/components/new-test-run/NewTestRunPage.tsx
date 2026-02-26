@@ -39,6 +39,8 @@ const NewTestRunPage: React.FC = () => {
   const maxTestCases = ['10', '20', '30', '50', '100'];
   const domains = ['E-commerce', 'Healthcare', 'Finance', 'Education'];
   const languages = ['Tamil', 'Hindi', 'Assamese', 'Bengali', 'Sindhi', 'Bodo'];
+  const [domainOptions, setDomainOptions] = useState<string[]>([]);
+  const [languageOptions, setLanguageOptions] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [totalTestCases, setTotalTestCases] = useState(0);
   const [filters, setFilters] = useState<AllFiltersResponse | null>(null);
@@ -54,7 +56,36 @@ const NewTestRunPage: React.FC = () => {
     domain: "",
     language: "",
   });
+  const fetchTargetMetadata = async (targetName: string) => {
+    try {
+      const res = await fetch(
+        API_ENDPOINTS.GET_TARGET_METADATA(targetName)
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch target metadata");
+      }
+
+      const data = await res.json();
+
+      setDomainOptions(data.domains || []);
+      setLanguageOptions(data.languages || []);
+
+      // Optional: reset selected domain & language
+      setFormData(prev => ({
+        ...prev,
+        domain: "",
+        language: ""
+      }));
+
+    } catch (err) {
+      console.error("Error fetching target metadata:", err);
+      setDomainOptions([]);
+      setLanguageOptions([]);
+    }
+  };
   const isStartDisabled = !formData.testPlan || !formData.target  || isRunning
+  const isTargetSelected = !!formData.target;
   useEffect(() => {
   const fetchFilters = async () => {
     try {
@@ -90,7 +121,11 @@ const handleChange = (key: string, value: any) => {
   if (key === "testPlan") {
     fetchMetricsByPlan(value); // 🔥 second fetch happens here
   }
+  if (key === "target") {
+    fetchTargetMetadata(value);
+  }
 };
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,18 +248,28 @@ const handleChange = (key: string, value: any) => {
           <div className="filter-item">
             <label>Domain</label>
             <CustomSelect
-              options={filters?.domains.map(p => p.filter_name) ?? []}
-              defaultText="Select Domain"
+              options={isTargetSelected ? domainOptions : []}
+              defaultText={
+                isTargetSelected
+                  ? "Select Domain"
+                  : "Please select target first"
+              }
               onChange={(val) => handleChange("domain", val)}
+              disabled={!isTargetSelected}
             />
           </div>
 
           <div className="filter-item">
             <label>Language</label>
             <CustomSelect
-              options={languages}
-              defaultText="Select Language"
+              options={isTargetSelected ? languageOptions : []}
+              defaultText={
+                isTargetSelected
+                  ? "Select Language"
+                  : "Please select target first"
+              }
               onChange={(val) => handleChange("language", val)}
+              disabled={!isTargetSelected}
             />
           </div>
         </div>
