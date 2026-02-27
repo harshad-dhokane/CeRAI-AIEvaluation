@@ -48,6 +48,8 @@ const TestRunsTable: React.FC<Props> = ({filters, onFilterChange}) => {
   const [filtersLoading, setFiltersLoading] = useState(true);
   const [openFilterColumn, setOpenFilterColumn] = useState<string | null>(null);
   const filterRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pageNumbersWrapperRef = useRef<HTMLDivElement | null>(null);
+  const pageNumberButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const FILTER_KEY_MAP: Record<string, keyof AllFilters> = {
     domain: "domains",
     target: "targets",
@@ -139,6 +141,22 @@ const TestRunsTable: React.FC<Props> = ({filters, onFilterChange}) => {
 
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  // Keep active page button visible in the horizontal pagination strip
+  useEffect(() => {
+    if (totalPages <= 5) {
+      return;
+    }
+
+    const activeButton = pageNumberButtonRefs.current[currentPage];
+    if (activeButton) {
+      activeButton.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [currentPage, totalPages]);
 
   // Generate page numbers for pagination
   const pageNumbers = [];
@@ -311,10 +329,16 @@ const TestRunsTable: React.FC<Props> = ({filters, onFilterChange}) => {
               <i className="bi bi-chevron-left"></i>
             </button>
             
-            <div className={`pagination-numbers-wrapper ${totalPages > 5 ? 'scrollable' : ''}`}>
+            <div
+              ref={pageNumbersWrapperRef}
+              className={`pagination-numbers-wrapper ${totalPages > 5 ? 'scrollable' : ''}`}
+            >
               {pageNumbers.map(number => (
                 <button
                   key={number}
+                  ref={(el) => {
+                    pageNumberButtonRefs.current[number] = el;
+                  }}
                   className={`pagination-number ${number === currentPage ? 'active' : ''}`}
                   onClick={() => paginate(number)}
                   aria-label={`Page ${number}`}

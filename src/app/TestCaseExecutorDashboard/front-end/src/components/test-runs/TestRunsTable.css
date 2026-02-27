@@ -193,6 +193,7 @@
 .pagination-numbers-wrapper.scrollable {
   max-width: 196px;
   overflow-x: auto;
+  scroll-behavior: smooth;
   scrollbar-width: thin;
   padding-bottom: 2px;
 }
