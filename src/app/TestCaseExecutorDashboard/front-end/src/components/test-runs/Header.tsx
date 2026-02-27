@@ -2,6 +2,7 @@ import React from "react";
 import "./Header.css";
 import AppButton from "../common/Button/AppButton";
 import { useNavigate } from "react-router-dom";
+import testRun from "../../../src/assets/logo/Test-run.png"
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -14,7 +15,8 @@ const Header: React.FC = () => {
       </div> */}
       
       <div className="header-content">
-        {/* <h1 className="page-title">Test Runs</h1> */}
+        <img src={testRun} alt="" />
+        <h1 className="page-title">Test Runs</h1>
         
         {/* <div className="header-actions">
           <AppButton

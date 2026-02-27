@@ -75,13 +75,13 @@ const Filters: React.FC<FiltersProps> = ({ onFilterChange }) => {
       </div> */}
       <div className="header-content">
         <div className="header-actions">
-          <AppButton
+          {/* <AppButton
             label="Continue"
             variant="outline-secondary"
             icon="bi-play-fill"
             size="md"
             className="continue-btn"
-          />
+          /> */}
           <AppButton
             label="New Test Run"
             variant="primary"
