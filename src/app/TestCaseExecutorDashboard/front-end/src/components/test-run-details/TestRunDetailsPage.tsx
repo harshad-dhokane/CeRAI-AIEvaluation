@@ -167,11 +167,11 @@ const RunDetails: React.FC = () => {
       {/* Header Section */}
       <div className={styles.flex}>
         <div className={styles.summaryCard}>
-          <div>
+          {/* <div>
             <h1 className={styles.title}>
               {summary.run_name}
             </h1>
-          </div>
+          </div> */}
 
           <div>
             <DetailCard
