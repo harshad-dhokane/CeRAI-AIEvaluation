@@ -260,15 +260,15 @@ AIEvaluationTool/
 │   │   ├── TDMS/                       # Test Data Management System
 │   │   │   ├── back-end/               # FastAPI backend service
 │   │   │   │   ├── main.py             # TDMS API server
-│   │   │   │   ├── database/           # Database layer
-│   │   │   │       ├── config.json     # Database layer
+│   │   │   │   └── database/           # Database layer
+│   │   │   │       └── config.json     # Database layer
 │   │   │   └── front-end/              # React/Node.js frontend
 │   │   └── TestCaseExecutorDashboard/  # Test Case Execution Dashboard
 │   │       ├── back-end/               # FastAPI backend service
 │   │       │   ├── .env                # DB configuration and Dev Configuration
 │   │       │   ├── .env.example        # Environment template
 │   │       │   ├── main.py             # TDMS API server
-│   │       │   ├── config.json         # Configure Database and Ports
+│   │       │   └── config.json         # Configure Database and Ports
 │   │       └── front-end/              # React/Node.js frontend
 │   └── lib/
 │       ├── strategy/..                 # Evaluation strategy implementations
@@ -301,6 +301,9 @@ AIEvaluationTool/
 - `response_analyzer/` - Analyzes responses and applies evaluation strategies
 - `sarvam_ai/` - Hosts multiple specialized AI models for evaluation
 - `TDMS/` - Web-based system for test data management and user access control
+- `prompt_quality_evaluation_tool/` - Streamlit-based UI for assessing prompt and response quality using LLM-based evaluation
+- `TestCaseExecutorDashboard/` - Web application for orchestrating, monitoring, and analyzing test case execution with real-time updates
+- `maintenance/` - System utilities for database cleanup & language correction operations
 
 ---
 
