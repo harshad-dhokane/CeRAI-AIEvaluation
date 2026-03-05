@@ -12,6 +12,8 @@ interface TestRun {
   start_ts: string;
   end_ts: string | null;
   domain: string;
+  duration_ms?: number;
+  average_score?: number | null;
 }
 
 interface HeaderConfig {
@@ -66,6 +68,7 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
     { key: "start_ts", label: "Started At", filterable: false, sortable: true, sortKey: "start_ts" },
     { key: "end_ts", label: "Ended At", filterable: false, sortable: true, sortKey: "end_ts" },
     { key: "duration", label: "Duration", filterable: false },
+    { key: "average_score", label: "Average Score", filterable: false },
     { key: "status", label: "Status", filterable: true, filterType: "status" },
     { key: "domain", label: "Domain", filterable: true, filterType: "domain" },
     { key: "report", label: "Report", filterable: false },
@@ -133,9 +136,13 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
 
     fetch(url)
       .then((res) => res.json())
-      .then((data: TestRun[]) => {
-        setRuns(data);
-        setFilteredRuns(data);
+      .then((data: TestRun[] | { detail?: string }) => {
+        const safeRuns = Array.isArray(data) ? data : [];
+        if (!Array.isArray(data)) {
+          console.error("Unexpected test-runs response:", data);
+        }
+        setRuns(safeRuns);
+        setFilteredRuns(safeRuns);
         setCurrentPage(1);
       })
       .catch((err) => console.error("Error fetching test runs:", err))
@@ -144,8 +151,9 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
 
   const indexOfLastRun = currentPage * itemsPerPage;
   const indexOfFirstRun = indexOfLastRun - itemsPerPage;
-  const currentRuns = filteredRuns.slice(indexOfFirstRun, indexOfLastRun);
-  const totalPages = Math.ceil(filteredRuns.length / itemsPerPage);
+  const safeFilteredRuns = Array.isArray(filteredRuns) ? filteredRuns : [];
+  const currentRuns = safeFilteredRuns.slice(indexOfFirstRun, indexOfLastRun);
+  const totalPages = Math.ceil(safeFilteredRuns.length / itemsPerPage);
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
@@ -305,10 +313,13 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
                     <td>{new Date(run.start_ts).toLocaleString()}</td>
                     <td>{run.end_ts ? new Date(run.end_ts).toLocaleString() : "-"}</td>
                     <td>
-                      {run.end_ts
-                        ? `${Math.round(
-                            (new Date(run.end_ts).getTime() - new Date(run.start_ts).getTime()) / 1000
-                          )}s`
+                      {run.duration_ms != null
+                        ? formatDuration(run.duration_ms)
+                        : "-"}
+                    </td>
+                    <td>
+                      {typeof run.average_score === "number"
+                        ? run.average_score.toFixed(2)
                         : "-"}
                     </td>
                     <td>
@@ -413,7 +424,7 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
       )}
       
       <div className="table-footer">
-        Showing {currentRuns.length} of {filteredRuns.length} test runs
+        Showing {currentRuns.length} of {safeFilteredRuns.length} test runs
       </div>
       </div>
     </div>
@@ -421,3 +432,26 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
 };
 
 export default TestRunsTable;
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  
+  if (seconds < 1) return '<1s';
+  if (seconds < 60) return `${seconds}s`;
+  
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  
+  if (minutes < 60) {
+    return remainingSeconds > 0 
+      ? `${minutes}m ${remainingSeconds}s`
+      : `${minutes}m`;
+  }
+  
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  
+  return remainingMinutes > 0
+    ? `${hours}h ${remainingMinutes}m`
+    : `${hours}h`;
+}

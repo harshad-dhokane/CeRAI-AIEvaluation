@@ -1,0 +1,19 @@
+{
+  "files": {
+    "main.css": "/static/css/main.9165c90a.css",
+    "main.js": "/static/js/main.90401c83.js",
+    "static/media/WSAI_Logo.png": "/static/media/WSAI_Logo.692ae3e402e90f467800.png",
+    "static/media/iit-logo.png": "/static/media/iit-logo.2490d57181ac4ecda756.png",
+    "static/media/bootstrap-icons.woff?": "/static/media/bootstrap-icons.1295669cd4e305c97f2c.woff",
+    "static/media/bootstrap-icons.woff2?": "/static/media/bootstrap-icons.92ea18a81d737146ff04.woff2",
+    "static/media/Test-run.png": "/static/media/Test-run.a089fff808457e5cbd43.png",
+    "static/media/cerai-logo.png": "/static/media/cerai-logo.fd6d34d8d7efe7862576.png",
+    "index.html": "/index.html",
+    "main.9165c90a.css.map": "/static/css/main.9165c90a.css.map",
+    "main.90401c83.js.map": "/static/js/main.90401c83.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.9165c90a.css",
+    "static/js/main.90401c83.js"
+  ]
+}

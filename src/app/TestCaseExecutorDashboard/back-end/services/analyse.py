@@ -3,6 +3,7 @@ from lib.strategy.strategy_implementor import StrategyImplementor
 from datetime import datetime
 def get_analyse_service(run_name: str, db):
     try:
+        analysis_start_ts = datetime.now()
         run = db.get_run_by_name(run_name=run_name)
         if not run:
             print(f"Run with name '{run_name}' not found.")
@@ -32,7 +33,7 @@ def get_analyse_service(run_name: str, db):
             if not strategy_name:
                 logger.error(f"Strategy not found for testcase '{detail.testcase_name}' in run '{run.run_name}'.")
                 continue
-
+            print(f"Strategy name for testcase '{detail.testcase_name}' is '{strategy_name}'.")            
             group_key = strategy_name + ":" + detail.metric_name
             if group_key not in grouped_run_details:
                 grouped_run_details[group_key] = []
@@ -90,8 +91,13 @@ def get_analyse_service(run_name: str, db):
                 conversation.evaluation_reason = reason
                 conversation.evaluation_ts = datetime.now().isoformat()   
                 db.add_or_update_conversation(conversation=conversation, override=False)
-                return {
-                    "status": "success"
-                }
+        analysis_end_ts = datetime.now()
+        duration_seconds = int((analysis_end_ts - analysis_start_ts).total_seconds())
+        return {
+            "status": "success",
+            "analysis_start_ts": analysis_start_ts.isoformat(),
+            "analysis_end_ts": analysis_end_ts.isoformat(),
+            "analysis_duration_seconds": duration_seconds,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

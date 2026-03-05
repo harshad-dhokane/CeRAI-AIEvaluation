@@ -2,7 +2,7 @@ import os
 import sys
 from typing import Optional,List,Literal
 from fastapi import HTTPException
-
+from datetime import datetime
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from schemas import TestRunFullResponse, TestRunSummaryResponse, TestRunDetailsResponse,TestRunResponse
 
@@ -80,7 +80,7 @@ def get_all_test_runs_service(
 ) -> List[TestRunResponse]:
     try:
         runs = db.get_all_runs(domain=domain, target=target, status=status)
-
+            
         response: List[TestRunResponse] = []
 
         for r in runs:
@@ -96,7 +96,43 @@ def get_all_test_runs_service(
                 target_obj = db.get_target_by_id(target_id)
                 if target_obj:
                     domain_name = target_obj.target_domain
+            duration_ms = None
+            timeline = db.get_run_timeline(r.run_name) or []
+            
+            if timeline:
+                events_by_plan = {}
+                total_seconds = 0
 
+                for e in timeline:
+                    events_by_plan.setdefault(e.plan_name, []).append(e)
+
+                for plan_events in events_by_plan.values():
+                    start_times = [
+                        datetime.fromisoformat(e.prompt_ts).timestamp()
+                        for e in plan_events if e.prompt_ts
+                    ]
+
+                    end_times = [
+                        datetime.fromisoformat(e.response_ts).timestamp()
+                        for e in plan_events if e.response_ts
+                    ]
+
+                    if start_times and end_times:
+                        total_seconds += (max(end_times) - min(start_times))
+
+                duration_ms = int(total_seconds * 1000)    
+
+            scores = []
+            for e in timeline:
+                if e.evaluation_score is not None:
+                    scores.append(float(e.evaluation_score))
+
+            average_score = (
+                round(sum(scores) / len(scores), 4)
+                if scores
+                else None
+            )
+                   
             response.append(
                 TestRunResponse(
                     run_id=r.run_id,
@@ -106,6 +142,8 @@ def get_all_test_runs_service(
                     start_ts=r.start_ts,
                     end_ts=r.end_ts,
                     domain=domain_name,
+                    duration_ms=duration_ms,
+                    average_score=average_score
                 )
             )
 
