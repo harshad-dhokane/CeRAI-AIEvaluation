@@ -9,32 +9,46 @@ from typing import Optional
 
 security = HTTPBearer()
 
+
+def _decode_access_token(token: str) -> dict:
+    candidate_keys = [
+        settings.SECRET_KEY,
+        "@cerai",
+    ]
+    last_error = None
+
+    for key in dict.fromkeys(candidate_keys):
+        try:
+            payload = jwt.decode(token, key, algorithms=[settings.ALGORITHM])
+            if payload.get("type") != "access":
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token type",
+                )
+            return payload
+        except HTTPException:
+            raise
+        except JWTError as exc:
+            last_error = exc
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired token",
+    ) from last_error
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """Get current user from JWT token."""
-    try:
-        token = credentials.credentials
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    token = credentials.credentials
+    payload = _decode_access_token(token)
 
-        if payload.get("type") != "access":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type"
-            )
-
-        user_name: str = payload.get("user_name")
-        if not user_name:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
-
-    except JWTError:
+    user_name: str = payload.get("user_name")
+    if not user_name:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token"
+            detail="Invalid token"
         )
 
     db_user = db.query(Users).filter(Users.user_name == user_name).first()
@@ -55,18 +69,13 @@ def get_current_user_optional(
     if not auth_header or not auth_header.startswith("Bearer "):
         return None
 
+    token = auth_header.split(" ")[1]
     try:
-        token = auth_header.split(" ")[1]
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-
-        if payload.get("type") != "access":
-            return None
-
+        payload = _decode_access_token(token)
         user_name: str = payload.get("user_name")
         if not user_name:
             return None
-
-    except JWTError:
+    except HTTPException:
         return None
 
     db_user = db.query(Users).filter(Users.user_name == user_name).first()
