@@ -3,9 +3,9 @@
 # Auth Service Runner
 echo "Starting Auth Service..."
 
-# Set environment variables
-export AUTH_SECRET_KEY="${AUTH_SECRET_KEY:-your-super-secret-key-change-this-in-production}"
-export AUTH_REFRESH_SECRET_KEY="${AUTH_REFRESH_SECRET_KEY:-your-refresh-secret-key-change-this-in-production}"
+# Set environment variables (must match TDMS verifier keys)
+export AUTH_SECRET_KEY="${AUTH_SECRET_KEY:-@cerai}"
+export AUTH_REFRESH_SECRET_KEY="${AUTH_REFRESH_SECRET_KEY:-@cerai_refresh}"
 
 # Database configuration
 export DB_HOST="${DB_HOST:-localhost}"

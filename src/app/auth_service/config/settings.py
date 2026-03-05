@@ -3,8 +3,8 @@ import os
 
 
 class Settings(BaseSettings):
-    SECRET_KEY: str = os.getenv("AUTH_SECRET_KEY", "your-secret-key-here")
-    REFRESH_SECRET_KEY: str = os.getenv("AUTH_REFRESH_SECRET_KEY", "your-refresh-secret-key-here")
+    SECRET_KEY: str = os.getenv("AUTH_SECRET_KEY", "@cerai")
+    REFRESH_SECRET_KEY: str = os.getenv("AUTH_REFRESH_SECRET_KEY", "@cerai_refresh")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
