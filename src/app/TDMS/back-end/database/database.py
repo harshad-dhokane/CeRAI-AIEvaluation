@@ -10,7 +10,7 @@ from typing import Optional
 import os
 import json
 
-config_path = os.path.join(os.path.dirname(__file__), "config.json")
+config_path = os.path.join(os.path.dirname(__file__), "../../../../../config.json")
 try:
     with open(config_path, "r") as f:
         config = json.load(f)
@@ -23,7 +23,7 @@ except FileNotFoundError:
 # SQLALCHEMY_DATABASE_URL = f"sqlite:///{db_path}"
 
 db_cfg = config.get("db", {})
-engine_type = db_cfg.get("engine_type", "sqlite").lower()
+engine_type = db_cfg.get("engine", "sqlite").lower()
 
 if engine_type == "sqlite":
     db_file = db_cfg.get("file", "TDMS.db")

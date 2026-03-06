@@ -56,10 +56,10 @@ def main():
     
     # Load configuration from the specified file if provided
     if args.config:
-        if not os.path.exists(args.config):
+        if not os.path.exists(f"../../../{args.config}"):
             logger.error(f"Configuration file '{args.config}' does not exist.")
             return
-        with open(args.config, 'r') as config_file:
+        with open(f"../../../{args.config}", 'r') as config_file:
             try:
                 config = json.load(config_file)
             except json.JSONDecodeError as e:
@@ -73,8 +73,8 @@ def main():
     # db_url = f"mariadb+mariadbconnector://{config['database']['user']}:{config['database']['password']}@{config['database']['host']}:{config['database']['port']}/{config['database']['database']}"
 
     # setting up the database connection
-    if config["database"]["engine"] == "sqlite":
-        db_file = config["database"].get("file", "app.db")
+    if config["db"]["engine"] == "sqlite":
+        db_file = config["db"].get("file", "app.db")
 
         # Resolve project root (this file → importer → app → src → project_root)
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))

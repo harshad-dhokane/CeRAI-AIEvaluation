@@ -104,10 +104,10 @@ def main():
     
     # Load configuration from the specified file if provided
     if args.config:
-        if not os.path.exists(args.config):
+        if not os.path.exists(f"../../../{args.config}"):
             logger.error(f"Configuration file '{args.config}' does not exist.")
             return
-        with open(args.config, 'r') as config_file:
+        with open(f"../../../{args.config}", 'r') as config_file:
             try:
                 config = json.load(config_file)
             except json.JSONDecodeError as e:
