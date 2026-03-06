@@ -66,7 +66,9 @@ if engine_type == "sqlite":
 
 # Resolve project root (this file → importer → app → src → project_root)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
-print(f"Project root resolved to: {project_root}")
+
+
+
 
 interface_manager_root=os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 interface_manager_config = os.path.join(

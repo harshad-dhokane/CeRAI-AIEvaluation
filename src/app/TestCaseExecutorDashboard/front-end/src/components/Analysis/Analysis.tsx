@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import { API_ENDPOINTS } from "../../config/api";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { API_ENDPOINTS, WS_BASE_URL } from "../../config/api";
 import styles from "./Analysis.module.css";
 
 interface RunSummary {
@@ -14,6 +14,7 @@ interface RunDetail {
   detail_id: number;
   testcase_name: string;
   metric_name: string;
+  strategy_name?: string;
   status: string;
   score?: number | null;
 }
@@ -23,11 +24,30 @@ interface TestRunResponse {
   details: RunDetail[];
 }
 
-interface AnalyseResponse {
+interface AnalyseStatusResponse {
+  run_name: string;
   status: string;
+  current?: number;
+  total?: number;
   analysis_start_ts?: string;
   analysis_end_ts?: string;
   analysis_duration_seconds?: number;
+  error?: string;
+}
+
+interface AnalysisProgressMessage {
+  type: string;
+  runName: string;
+  current?: number;
+  total?: number;
+  testcaseName?: string;
+  metricName?: string;
+  strategyName?: string;
+  detailId?: number;
+  score?: number | null;
+  analysisStartTs?: string;
+  analysisEndTs?: string;
+  error?: string;
 }
 
 const formatDuration = (start: string, end: string | null): string => {
@@ -48,13 +68,67 @@ const formatDuration = (start: string, end: string | null): string => {
 
 const Analysis: React.FC = () => {
   const { runName } = useParams<{ runName: string }>();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState<boolean>(true);
+  const [isAnalysing, setIsAnalysing] = useState<boolean>(false);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [details, setDetails] = useState<RunDetail[]>([]);
   const [analysisStartTs, setAnalysisStartTs] = useState<string | null>(null);
   const [analysisEndTs, setAnalysisEndTs] = useState<string | null>(null);
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+  const [liveProgress, setLiveProgress] = useState<AnalysisProgressMessage | null>(null);
+
+  const orderedDetails = useMemo(
+    () => [...details].sort((a, b) => a.detail_id - b.detail_id),
+    [details]
+  );
+  const orderedDetailsRef = useRef<RunDetail[]>([]);
+
+  useEffect(() => {
+    orderedDetailsRef.current = orderedDetails;
+  }, [orderedDetails]);
+
+  const fetchDetails = async (targetRunName: string, silent = false): Promise<void> => {
+    const detailsRes = await fetch(API_ENDPOINTS.GET_TEST_RUN_DETAILS(targetRunName, ""));
+    if (!detailsRes.ok) {
+      const detailsBody = await detailsRes.json().catch(() => null);
+      throw new Error(detailsBody?.detail || `Failed to load run details (${detailsRes.status})`);
+    }
+    const data: TestRunResponse = await detailsRes.json();
+    setSummary(data.summary);
+    setDetails(data.details || []);
+    if (!silent) {
+      setLoading(false);
+    }
+  };
+
+  const applyProgress = useCallback((payload: AnalysisProgressMessage) => {
+    setLiveProgress(payload);
+    if (payload.analysisStartTs) {
+      setAnalysisStartTs(payload.analysisStartTs);
+    }
+    if (payload.analysisEndTs) {
+      setAnalysisEndTs(payload.analysisEndTs);
+    }
+
+    if (typeof payload.detailId === "number") {
+      const idx = orderedDetailsRef.current.findIndex((d) => d.detail_id === payload.detailId);
+      if (idx >= 0) {
+        setCurrentStepIndex(idx);
+      }
+    } else if (typeof payload.current === "number" && payload.current > 0) {
+      setCurrentStepIndex(Math.max(0, payload.current - 1));
+    }
+
+    if (typeof payload.score === "number" && typeof payload.detailId === "number") {
+      setDetails((prev) =>
+        prev.map((d) => (d.detail_id === payload.detailId ? { ...d, score: payload.score } : d))
+      );
+    }
+  }, []);
 
   useEffect(() => {
     if (!runName) {
@@ -63,51 +137,150 @@ const Analysis: React.FC = () => {
       return;
     }
 
-    const fetchAnalysis = async () => {
-      setLoading(true);
-      setError(null);
+    let isMounted = true;
+    let statusTimer: number | null = null;
+    let keepAliveTimer: number | null = null;
+    let ws: WebSocket | null = null;
+
+    const pollStatus = async () => {
+      const statusRes = await fetch(API_ENDPOINTS.ANALYSE_RUN_STATUS(runName));
+      if (!statusRes.ok) {
+        return;
+      }
+      const statusData: AnalyseStatusResponse = await statusRes.json();
+      if (!isMounted) return;
+
+      if (statusData.analysis_start_ts) setAnalysisStartTs(statusData.analysis_start_ts);
+      if (statusData.analysis_end_ts) setAnalysisEndTs(statusData.analysis_end_ts);
+
+      if (statusData.status === "RUNNING") {
+        setIsAnalysing(true);
+        setIsCompleted(false);
+      } else if (statusData.status === "COMPLETED") {
+        setIsAnalysing(false);
+        setIsCompleted(true);
+        await fetchDetails(runName, true);
+        if (statusTimer) {
+          window.clearInterval(statusTimer);
+          statusTimer = null;
+        }
+      } else if (statusData.status === "FAILED") {
+        setIsAnalysing(false);
+        setError(statusData.error || "Analysis failed.");
+        if (statusTimer) {
+          window.clearInterval(statusTimer);
+          statusTimer = null;
+        }
+      }
+    };
+
+    const startAnalysis = async () => {
       try {
+        setError(null);
+        await fetchDetails(runName);
+
         const analyseRes = await fetch(API_ENDPOINTS.ANALYSE_RUN(runName));
         if (!analyseRes.ok) {
           const analyseBody = await analyseRes.json().catch(() => null);
           throw new Error(analyseBody?.detail || `Analysis failed (${analyseRes.status})`);
         }
-        const analyseData: AnalyseResponse = await analyseRes.json().catch(() => ({ status: "success" }));
-        setAnalysisStartTs(analyseData.analysis_start_ts ?? null);
-        setAnalysisEndTs(analyseData.analysis_end_ts ?? null);
 
-        const detailsRes = await fetch(API_ENDPOINTS.GET_TEST_RUN_DETAILS(runName, ""));
-        if (!detailsRes.ok) {
-          const detailsBody = await detailsRes.json().catch(() => null);
-          throw new Error(detailsBody?.detail || `Failed to load run details (${detailsRes.status})`);
-        }
-
-        const data: TestRunResponse = await detailsRes.json();
-        setSummary(data.summary);
-        setDetails(data.details || []);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong while analysing this run.");
-      } finally {
+        const analyseData = await analyseRes.json().catch(() => ({ status: "started" }));
+        if (!isMounted) return;
+        setIsAnalysing(analyseData.status === "started" || analyseData.status === "running");
+        setIsCompleted(false);
         setLoading(false);
+
+        ws = new WebSocket(`${WS_BASE_URL}/ws/test-run`);
+        ws.onopen = () => {
+          ws?.send(JSON.stringify({ type: "ANALYSIS_SUBSCRIBE", runName }));
+          keepAliveTimer = window.setInterval(() => {
+            ws?.send("ping");
+          }, 15000);
+        };
+
+        ws.onmessage = async (event) => {
+          if (!isMounted) return;
+          let payload: AnalysisProgressMessage | null = null;
+          try {
+            payload = JSON.parse(event.data);
+          } catch {
+            return;
+          }
+          if (!payload || payload.runName !== runName) return;
+
+          if (payload.type === "ANALYSIS_STARTED") {
+            setIsAnalysing(true);
+            setIsCompleted(false);
+            applyProgress(payload);
+            return;
+          }
+
+          if (payload.type === "ANALYSIS_PROGRESS") {
+            applyProgress(payload);
+            return;
+          }
+
+          if (payload.type === "ANALYSIS_FINISHED") {
+            setIsAnalysing(false);
+            setIsCompleted(true);
+            applyProgress(payload);
+            await fetchDetails(runName, true);
+            return;
+          }
+
+          if (payload.type === "ANALYSIS_FAILED") {
+            setIsAnalysing(false);
+            setError(payload.error || "Analysis failed.");
+            if (statusTimer) {
+              window.clearInterval(statusTimer);
+              statusTimer = null;
+            }
+          }
+        };
+      } catch (e) {
+        if (isMounted) {
+          setError(e instanceof Error ? e.message : "Something went wrong while analysing this run.");
+          setLoading(false);
+          setIsAnalysing(false);
+        }
       }
     };
 
-    fetchAnalysis();
-  }, [runName]);
+    startAnalysis();
+    statusTimer = window.setInterval(pollStatus, 2000);
+
+    return () => {
+      isMounted = false;
+      if (statusTimer) {
+        window.clearInterval(statusTimer);
+      }
+      if (keepAliveTimer) {
+        window.clearInterval(keepAliveTimer);
+      }
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, [runName, applyProgress]);
 
   const stats = useMemo(() => {
-    const scoredItems = details.filter((d) => typeof d.score === "number") as Array<RunDetail & { score: number }>;
+    const scoredItems = orderedDetails.filter((d) => typeof d.score === "number") as Array<RunDetail & { score: number }>;
     const totalScore = scoredItems.reduce((sum, d) => sum + d.score, 0);
     const overallScore = scoredItems.length > 0 ? totalScore / scoredItems.length : null;
-    const completed = details.filter((d) => d.status === "COMPLETED").length;
+    const completed = orderedDetails.filter((d) => d.status === "COMPLETED").length;
 
     return {
-      totalCases: details.length,
-      scoredCases: scoredItems.length,
+      totalCases: orderedDetails.length,
       completedCases: completed,
       overallScore,
     };
-  }, [details]);
+  }, [orderedDetails]);
+
+  const currentStep = orderedDetails[currentStepIndex] ?? null;
+  const progressPercent = orderedDetails.length > 0
+    ? Math.round(((Math.min(currentStepIndex + 1, orderedDetails.length)) / orderedDetails.length) * 100)
+    : 0;
 
   if (loading) return <div className={styles.state}>Running analysis for this run...</div>;
   if (error) return <div className={`${styles.state} ${styles.error}`}>{error}</div>;
@@ -117,15 +290,28 @@ const Analysis: React.FC = () => {
     <div className={styles.page}>
       <div className={styles.header}>
         <h2>Run Analysis</h2>
-        
+        {isAnalysing && <p>Analysis is running. Live execution loop is updating...</p>}
+        {isCompleted && <p className={styles.success}>Completed successfully.</p>}
       </div>
+
+      {isCompleted && (
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.routeButton}
+            onClick={() => navigate(`/test-runs/${encodeURIComponent(summary.run_name)}`)}
+          >
+            Go to /test-runs/{summary.run_name}
+          </button>
+        </div>
+      )}
 
       <section className={styles.cardGrid}>
         <div className={styles.card}>
           <span className={styles.label}>Run Name</span>
           <span className={styles.value}>{summary.run_name}</span>
         </div>
-        
+
         <div className={styles.card}>
           <span className={styles.label}>Duration</span>
           <span className={styles.value}>
@@ -144,36 +330,71 @@ const Analysis: React.FC = () => {
         </div>
       </section>
 
-      <section className={styles.tableWrap}>
-        <h3>Scores by Test Case</h3>
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Test Case</th>
-                <th>Metric</th>
-                <th>Status</th>
-                <th>Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {details.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className={styles.empty}>No analysed test case records found.</td>
-                </tr>
-              ) : (
-                details.map((item) => (
-                  <tr key={item.detail_id}>
-                    <td>{item.testcase_name}</td>
-                    <td>{item.metric_name}</td>
-                    <td>{item.status}</td>
-                    <td>{typeof item.score === "number" ? item.score.toFixed(2) : "-"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      <section className={styles.executionWrap}>
+        <div className={styles.executionHeaderRow}>
+          <h3>Execution Loop</h3>
+          {orderedDetails.length > 0 && (
+            <span className={styles.executionCount}>Step {Math.min(currentStepIndex + 1, orderedDetails.length)} / {orderedDetails.length}</span>
+          )}
         </div>
+
+        {currentStep ? (
+          <>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{ width: `${progressPercent}%` }} />
+            </div>
+
+            <div className={styles.currentStepCard}>
+              <div className={styles.stepLabel}>Current Strategy</div>
+              <div className={styles.stepValue}>{liveProgress?.strategyName || currentStep.strategy_name || "Strategy"}</div>
+
+              <div className={styles.stepMetaGrid}>
+                <div>
+                  <span className={styles.metaLabel}>Metric</span>
+                  <span className={styles.metaValue}>{liveProgress?.metricName || currentStep.metric_name}</span>
+                </div>
+                <div>
+                  <span className={styles.metaLabel}>Test Case</span>
+                  <span className={styles.metaValue}>{liveProgress?.testcaseName || currentStep.testcase_name}</span>
+                </div>
+                <div>
+                  <span className={styles.metaLabel}>Status</span>
+                  <span className={styles.metaValue}>{isCompleted ? "COMPLETED" : isAnalysing ? "RUNNING" : currentStep.status}</span>
+                </div>
+                <div>
+                  <span className={styles.metaLabel}>Score</span>
+                  <span className={styles.metaValue}>
+                    {typeof liveProgress?.score === "number"
+                      ? liveProgress.score.toFixed(2)
+                      : typeof currentStep.score === "number"
+                        ? currentStep.score.toFixed(2)
+                        : "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.stepRail}>
+              {orderedDetails.map((item, index) => {
+                const stateClass = index < currentStepIndex
+                  ? styles.stepDone
+                  : index === currentStepIndex
+                    ? styles.stepActive
+                    : styles.stepPending;
+
+                return (
+                  <div key={item.detail_id} className={`${styles.stepChip} ${stateClass}`}>
+                    <span className={styles.chipStrategy}>{item.strategy_name || "Strategy"}</span>
+                    <span className={styles.chipMetric}>{item.metric_name}</span>
+                    <span className={styles.chipCase}>{item.testcase_name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className={styles.empty}>No analysed test case records found.</div>
+        )}
       </section>
     </div>
   );
