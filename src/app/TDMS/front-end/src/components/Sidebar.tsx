@@ -16,6 +16,7 @@ interface NavItem {
   icon: typeof Home;
   label: string;
   path: string;
+  externalUrl?: string;
   requiredPermission?: keyof import("@/utils/permissions").RolePermissions;
 }
 
@@ -25,6 +26,8 @@ const Sidebar = () => {
   const { toast } = useToast();
   const [userInfo, setUserInfo] = useState<UserInfo>({ user_name: "UserName", email: "", role: "Admin" });
   const [isLoading, setIsLoading] = useState(true);
+  const testRunsHomeUrl =
+    import.meta.env.VITE_TEST_RUNS_HOME_URL || "http://localhost:3000/";
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -77,7 +80,8 @@ const Sidebar = () => {
   }, [navigate, toast]);
 
   const navItems: NavItem[] = [
-    { icon: Home, label: "Home", path: "/dashboard" },
+    { icon: Home, label: "Home", path: "", externalUrl: testRunsHomeUrl },
+    { icon: Home, label: "Test Data", path: "/dashboard" },
     { 
       icon: Users, 
       label: "User's List", 
@@ -107,8 +111,21 @@ const Sidebar = () => {
           })
           .map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+            const isActive = !item.externalUrl && location.pathname === item.path;
             
+            if (item.externalUrl) {
+              return (
+                <a
+                  key={`${item.label}-${item.externalUrl}`}
+                  href={item.externalUrl}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors text-primary-foreground/80 hover:bg-white/10"
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </a>
+              );
+            }
+
             return (
               <Link
                 key={item.path}

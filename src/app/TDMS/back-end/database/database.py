@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from config import helpers
 from models import user
 from fastapi import Depends, HTTPException, status, Header
-from jose import jwt, JWTError
+# from jose import jwt, JWTError
 from config.settings import settings
 from typing import Optional
 import os
