@@ -9,13 +9,14 @@
 
 .sidebar-brand-wrap {
   padding: 24px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
 }
 
 .sidebar-brand-pill {
   width: 160px;
-  height: 60px;
+  height: 75px;
   border-radius: 999px;
   background: #ffffff;
   display: flex;

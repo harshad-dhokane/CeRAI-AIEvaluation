@@ -11,6 +11,7 @@ interface FiltersProps {
 
 const Filters: React.FC<FiltersProps> = ({ onFilterChange }) => {
   const navigate = useNavigate();
+  const loginUrl = process.env.REACT_APP_LOGIN_URL || "http://localhost:7500/login";
   const [filters, setFilters] = useState<AllFilters>({
     domains: [],
     languages: [],
@@ -20,12 +21,38 @@ const Filters: React.FC<FiltersProps> = ({ onFilterChange }) => {
     statuses: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  const getAuthHeaders = (): HeadersInit => {
+    const token = localStorage.getItem("access_token");
+    return token
+      ? {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        }
+      : {
+          "Content-Type": "application/json",
+        };
+  };
 
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`)
-      .then((res) => res.json())
+    fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`, {
+      headers: getAuthHeaders(),
+    })
+      .then((res) => {
+        if (res.status === 401) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          localStorage.removeItem("user_name");
+          localStorage.removeItem("role");
+          window.location.replace(loginUrl);
+          throw new Error("Unauthorized");
+        }
+        if (!res.ok) {
+          throw new Error(`Failed to fetch filters (${res.status})`);
+        }
+        return res.json();
+      })
       .then((data: AllFilters) => {
         setFilters(data);
         setIsLoading(false);
@@ -34,7 +61,7 @@ const Filters: React.FC<FiltersProps> = ({ onFilterChange }) => {
         console.error("Error fetching filters:", err);
         setIsLoading(false);
       });
-  }, []);
+  }, [loginUrl]);
 
   const filterConfigs = [
     { type: "domain", label: "Domain", options: filters.domains },

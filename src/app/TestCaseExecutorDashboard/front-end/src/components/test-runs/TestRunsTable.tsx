@@ -30,6 +30,7 @@ interface Props {
 
 const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
   const navigate = useNavigate();
+  const loginUrl = process.env.REACT_APP_LOGIN_URL || "http://localhost:7500/login";
   const [runs, setRuns] = useState<TestRun[]>([]);
   const [filteredRuns, setFilteredRuns] = useState<TestRun[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -58,6 +59,24 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
     target: "targets",
     status: "statuses",
   };
+  const getAuthHeaders = (): HeadersInit => {
+    const token = localStorage.getItem("access_token");
+    return token
+      ? {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        }
+      : {
+          "Content-Type": "application/json",
+        };
+  };
+  const redirectToLogin = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user_name");
+    localStorage.removeItem("role");
+    window.location.replace(loginUrl);
+  };
 
   const headers: HeaderConfig[] = [
     { key: "run_id", label: "Run Id", filterable: false },
@@ -73,8 +92,19 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
 
   useEffect(() => {
     setFiltersLoading(true);
-    fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`)
-      .then((res) => res.json())
+    fetch(`${API_BASE_URL}${API_ENDPOINTS.GET_ALL_FILTERS}`, {
+      headers: getAuthHeaders(),
+    })
+      .then((res) => {
+        if (res.status === 401) {
+          redirectToLogin();
+          throw new Error("Unauthorized");
+        }
+        if (!res.ok) {
+          throw new Error(`Failed to fetch filters (${res.status})`);
+        }
+        return res.json();
+      })
       .then((data: AllFilters) => {
         setAvailableFilters(data);
         setFiltersLoading(false);
@@ -83,7 +113,7 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
         console.error("Error fetching filters:", err);
         setFiltersLoading(false);
       });
-  }, []);
+  }, [loginUrl]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -131,8 +161,19 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
 
     const url = `${API_BASE_URL}${API_ENDPOINTS.GET_ALL_TEST_RUNS}?${params.toString()}`;
 
-    fetch(url)
-      .then((res) => res.json())
+    fetch(url, {
+      headers: getAuthHeaders(),
+    })
+      .then((res) => {
+        if (res.status === 401) {
+          redirectToLogin();
+          throw new Error("Unauthorized");
+        }
+        if (!res.ok) {
+          throw new Error(`Failed to fetch test runs (${res.status})`);
+        }
+        return res.json();
+      })
       .then((data: TestRun[]) => {
         setRuns(data);
         setFilteredRuns(data);
@@ -140,7 +181,7 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
       })
       .catch((err) => console.error("Error fetching test runs:", err))
       .finally(() => setLoading(false));
-  }, [filters, sortBy, order]);
+  }, [filters, sortBy, order, loginUrl]);
 
   const indexOfLastRun = currentPage * itemsPerPage;
   const indexOfFirstRun = indexOfLastRun - itemsPerPage;
