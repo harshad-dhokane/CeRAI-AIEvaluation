@@ -1,8 +1,7 @@
 import { Home, Users, LogOut } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import ceraiLogo from "@/assets/cerai-logo.png";
-import { useToast } from "@/hooks/use-toast";
+import ceraiLogo from "@/assets/logo/cerai-logo.png";
 
 interface UserInfo {
   user_name: string;
@@ -20,7 +19,6 @@ interface NavItem {
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [userInfo, setUserInfo] = useState<UserInfo>({ user_name: "UserName", email: "", role: "Admin" });
   const [isLoading, setIsLoading] = useState(true);
   const testDataUrl = process.env.REACT_APP_TEST_DATA_URL || "/";
@@ -55,11 +53,6 @@ const Sidebar = () => {
     localStorage.removeItem("user_name");
     localStorage.removeItem("role");
     navigate("/");
-          toast({
-            title: "Session Expired",
-            description: "Please login again",
-            variant: "destructive",
-          });
         } else {
           // Use fallback values from localStorage if API fails
           const storedUsername = localStorage.getItem("user_name");
@@ -79,7 +72,7 @@ const Sidebar = () => {
     };
 
     fetchUserInfo();
-  }, [currentUserUrl, navigate, toast]);
+  }, [currentUserUrl, navigate]);
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Home", path: "/" },
