@@ -30,9 +30,11 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
   const loginUrl = LOGIN_URL;
   const testDataUrl = process.env.REACT_APP_TEST_DATA_URL || "http://localhost:8080/dashboard";
   const userListUrl = process.env.REACT_APP_USER_LIST_URL || "http://localhost:8080/users";
+  const tdmsBaseUrl =
+    process.env.REACT_APP_TDMS_API_BASE_URL || "http://localhost:8000";
   const currentUserUrl =
     process.env.REACT_APP_CURRENT_USER_URL ||
-    `${process.env.REACT_APP_API_BASE_URL || ""}/api/users/me`;
+    `${tdmsBaseUrl}/api/users/me`;
   const handleLogout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
