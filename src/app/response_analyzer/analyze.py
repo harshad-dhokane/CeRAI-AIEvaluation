@@ -55,11 +55,12 @@ def main():
         return
     
     # Load configuration from the specified file if provided
+    config_path = os.path.join(os.path.dirname(__file__), "../../../", args.config)
     if args.config:
-        if not os.path.exists(f"../../../{args.config}"):
+        if not os.path.exists(config_path):
             logger.error(f"Configuration file '{args.config}' does not exist.")
             return
-        with open(f"../../../{args.config}", 'r') as config_file:
+        with open(config_path, 'r') as config_file:
             try:
                 config = json.load(config_file)
             except json.JSONDecodeError as e:
@@ -70,7 +71,7 @@ def main():
         return
     
     # setting up the database connection
-    # db_url = f"mariadb+mariadbconnector://{config['database']['user']}:{config['database']['password']}@{config['database']['host']}:{config['database']['port']}/{config['database']['database']}"
+    # db_url = f"mariadb+mariadbconnector://{config["db"]['user']}:{config["db"]['password']}@{config["db"]['host']}:{config["db"]['port']}/{config["db"]['database']}"
 
     # setting up the database connection
     if config["db"]["engine"] == "sqlite":
@@ -93,9 +94,9 @@ def main():
         # Original MariaDB path (fallback)
         db_url = (
             f"mariadb+mariadbconnector://"
-            f"{config['database']['user']}:{config['database']['password']}"
-            f"@{config['database']['host']}:{config['database']['port']}/"
-            f"{config['database']['database']}"
+            f"{config['db']['user']}:{config['db']['password']}"
+            f"@{config['db']['host']}:{config['db']['port']}/"
+            f"{config['db']['database']}"
         )
 
     try:
