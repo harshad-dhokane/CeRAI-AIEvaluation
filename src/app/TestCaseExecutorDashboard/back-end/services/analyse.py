@@ -15,22 +15,22 @@ print(f"GPU URL: {gpu_url}")
 analysis_jobs = {}
 analysis_jobs_lock = Lock()
 
-def check_service(url: str, name: str):
-    try:
-        response = requests.get(url, timeout=3)
-        print(f"Health check for {name} service at {url} returned status code {response.status_code}")
-        if response.status_code < 400:
-            return f"{name} service is reachable at {url}"
-        if response.status_code >= 400:
-            raise HTTPException(
-                status_code=503,
-                detail=f"{name} service is not healthy at {url}"
-            )
-    except requests.exceptions.RequestException:
-        raise HTTPException(
-            status_code=503,
-            detail=f"{name} service is not reachable at {url}"
-        )
+# def check_service(url: str, name: str):
+#     try:
+#         response = requests.get(url, timeout=3)
+#         print(f"Health check for {name} service at {url} returned status code {response.status_code}")
+#         if response.status_code < 400:
+#             return f"{name} service is reachable at {url}"
+#         if response.status_code >= 400:
+#             raise HTTPException(
+#                 status_code=503,
+#                 detail=f"{name} service is not healthy at {url}"
+#             )
+#     except requests.exceptions.RequestException:
+#         raise HTTPException(
+#             status_code=503,
+#             detail=f"{name} service is not reachable at {url}"
+#         )
     
 def _set_analysis_job(run_name: str, **updates):
     with analysis_jobs_lock:

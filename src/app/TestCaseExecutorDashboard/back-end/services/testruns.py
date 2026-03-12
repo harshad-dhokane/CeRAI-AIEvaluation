@@ -163,6 +163,12 @@ def get_metrics_by_plan_service(db, plan_name: str):
     metrics = db.get_metrics_by_testplan(plan_name)
     return [FilterResponse(filter_name=m) for m in metrics]
 
+def get_test_run_timeline_service(db,run_name: str):
+    timeline = db.get_run_timeline(run_name)
+    if not timeline:
+        raise HTTPException(status_code=404, detail="No timeline found")
+    return timeline
+
 # def start_run_service(db, data: NewTestRun, background_tasks: BackgroundTasks):    
 #     ensure_interface_manager_running(interface_manager_config)
 #     if data.testPlan:

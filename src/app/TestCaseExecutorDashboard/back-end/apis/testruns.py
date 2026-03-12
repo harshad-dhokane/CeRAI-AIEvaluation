@@ -4,9 +4,9 @@ from typing import Optional, List,Literal
 from fastapi import APIRouter, HTTPException, Query, Depends, BackgroundTasks
 
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from schemas import TestRunFullResponse,TestRunResponse,NewTestRun, FilterResponse
-from services.testruns import get_test_run_service,get_all_test_runs_service,get_metrics_by_plan_service
-from dependencies import get_db
+from schemas import TestRunFullResponse,TestRunResponse,NewTestRun, FilterResponse,TimelineEvent
+from services.testruns import get_test_run_service,get_all_test_runs_service,get_metrics_by_plan_service,get_test_run_timeline_service
+from database.database import get_db
 
 router = APIRouter()
 
@@ -64,4 +64,11 @@ def get_metrics_by_plan(plan_name: str, db=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))        
     
-    
+@router.get("/test-runs/{run_name}/timeline", response_model=list[TimelineEvent])
+def get_test_run_timeline(run_name: str, db=Depends(get_db)):
+    try:
+        return get_test_run_timeline_service(db=db, run_name=run_name)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))    

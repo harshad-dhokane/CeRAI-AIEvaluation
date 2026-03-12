@@ -29,7 +29,8 @@ from lib.data import Target, Run, RunDetail, Conversation
 
 from lib.orm.tables import TestRuns
 from lib.interface_manager import InterfaceManagerClient  # Import the InterfaceManagerClient from the lib directory
-
+from database.database import get_db
+from database.database import db
 
 from apis.testruns import router as testruns_router
 from apis.filters import router as filters_router
@@ -55,15 +56,12 @@ try:
 except FileNotFoundError:
     config = {}
 
-db_cfg = config.get("db", {})
-engine_type = db_cfg.get("engine_type", "sqlite").lower()
+
 
 port_config = config.get("port", {})
 BACKEND_PORT = int(port_config.get("back-end", 7000))
 
-if engine_type == "sqlite":
-    
-    db_file = "AIEvaluationData.db"
+
 
 # Resolve project root (this file → importer → app → src → project_root)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
@@ -94,17 +92,7 @@ template_path = os.path.join(
 
 wb = load_workbook(template_path)
 
-# Place DB inside project_root/data
-db_folder = os.path.join(project_root, "data")
-os.makedirs(db_folder, exist_ok=True)
 
-# Full DB path
-db_path = os.path.join(db_folder, db_file)
-
-# SQLite requires a file URL
-db_url = f"sqlite:///{db_path}"
-
-db = DB(db_url=db_url, debug=False)
 
 app = FastAPI()
 
@@ -189,73 +177,7 @@ async def step(ws_payload, delay=0.1):
     await ws_manager.send_all(ws_payload)
     await asyncio.sleep(delay)
 
-# @app.get(
-#     "/get_all_test_runs",
-#     response_model=list[TestRunResponse]
-# )
-# def get_all_test_runs(
-#     domain: Optional[str] = Query(None),
-#     target: Optional[str] = Query(None),
-#     status: Optional[str] = Query(None),
-#     sort_by: Literal["end_ts", "start_ts"] = Query("end_ts"),
-#     order: Literal["asc", "desc"] = Query("desc"),
-# ):
-#     try:
-        
-#         db = DB(db_url=db_url, debug=False)
-#         runs = db.get_all_runs(domain=domain, target=target, status=status)
-        
-#         response = []
-        
-#         for r in runs:
-#             domain_name = None
 
-#             target_id = r.kwargs.get("target_id") if hasattr(r, "kwargs") else None
-
-#             if target_id:
-#                 target_obj = db.get_target_by_id(target_id)
-#                 if target_obj:
-#                     domain_name = target_obj.target_domain   # ✅ FIX
-
-#             response.append(
-#                 TestRunResponse(
-#                     run_id=r.run_id,
-#                     run_name=r.run_name,
-#                     target=r.target,
-#                     status=r.status,
-#                     start_ts=r.start_ts,
-#                     end_ts=r.end_ts,
-#                     domain=domain_name
-#                 )
-#             )
-
-#         return response
-
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-# @app.get("/get_all_filters", response_model=AllFiltersResponse)
-# def get_all_filters():
-#     try:
-        
-#         # Use the @property methods to get all data
-#         return AllFiltersResponse(
-#             domains=[FilterResponse(filter_name=d.name) for d in db.domains],
-#             languages=[FilterResponse(filter_name=l.name) for l in db.languages],
-#             targets=[
-#                 FilterResponse(filter_name=t.target_name, extra_info=t.target_type)
-#                 for t in db.targets
-#             ],
-#             statuses=[
-#                 FilterResponse(filter_name="COMPLETED"),
-#                 FilterResponse(filter_name="RUNNING"),
-#             ],
-#             plans=[FilterResponse(filter_name=p.plan_name) for p in db.plans],
-#             metrics=[FilterResponse(filter_name=m.metric_name) for m in db.metrics]
-#         )
-
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/test-runs/{run_name}/summary", response_model=TestRunSummaryResponse)
 def get_test_run_summary(run_name: str):
@@ -508,25 +430,6 @@ def get_conversation_timeline_api(conversation_id: int):
 
     return timeline
 
-@app.get(
-    "/test-runs/{run_name}/timeline",
-    response_model=list[TimelineEvent]
-)
-def get_test_run_timeline(run_name: str):
-    
-    timeline = db.get_run_timeline(run_name)
-    if not timeline:
-        raise HTTPException(status_code=404, detail="No timeline found")
-    
-    return timeline
-
-# @app.get("/get_metrics_by_plan/{plan_name}", response_model=list[FilterResponse])
-# def get_metrics_by_plan(plan_name: str):
-#     try:
-#         metrics = db.get_metrics_by_testplan(plan_name)
-#         return [FilterResponse(filter_name=m) for m in metrics]
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/start-run")
 def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
