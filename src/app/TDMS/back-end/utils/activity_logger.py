@@ -1,6 +1,6 @@
 """Utility functions for logging user activities."""
 from sqlalchemy.orm import Session
-from database.database import SessionLocal
+from configuration.database import SessionLocal
 from models.user import ActivityLog, Users
 from fastapi import HTTPException
 from typing import Optional

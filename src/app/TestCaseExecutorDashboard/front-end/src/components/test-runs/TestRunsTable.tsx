@@ -68,7 +68,7 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
     { key: "start_ts", label: "Started At", filterable: false, sortable: true, sortKey: "start_ts" },
     // { key: "end_ts", label: "Ended At", filterable: false, sortable: true, sortKey: "end_ts" },
     { key: "duration", label: "Duration", filterable: false },
-    { key: "average_score", label: "Average Score", filterable: false },
+    { key: "average_score", label: "Score", filterable: false },
     { key: "status", label: "Status", filterable: true, filterType: "status" },
     { key: "domain", label: "Domain", filterable: true, filterType: "domain" },
     { key: "actions", label: "Actions", filterable: false },

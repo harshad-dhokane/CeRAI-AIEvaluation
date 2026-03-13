@@ -3,9 +3,11 @@ import sys
 from typing import Optional,List,Literal
 from fastapi import HTTPException, BackgroundTasks
 from datetime import datetime
+from configuration.paths import wb
+import tempfile
 
-from schemas import TestRunFullResponse, TestRunSummaryResponse, TestRunDetailsResponse,TestRunResponse, NewTestRun, FilterResponse
-
+from schemas import TestRunFullResponse, TestRunSummaryResponse, TestRunDetailsResponse,TestRunResponse, NewTestRun, FilterResponse, EvaluationItemResponse, RunEvaluationSummaryResponse
+from fastapi.responses import FileResponse
 
 def get_test_run_service(db, run_name: str, metric: Optional[str] = None, status: Optional[str] = None):
     try:
@@ -168,6 +170,148 @@ def get_test_run_timeline_service(db,run_name: str):
     if not timeline:
         raise HTTPException(status_code=404, detail="No timeline found")
     return timeline
+
+
+def get_run_evaluation_summary_service(db, run_name: str):
+    run = db.get_run_by_name(run_name)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    domain_name = None
+    if getattr(run, "target_id", None):
+        target = db.get_target_by_id(run.target_id)
+        if target:
+            domain_name = getattr(target, "target_domain", None)
+
+    run_summary = TestRunSummaryResponse(
+        run_id=run.run_id,
+        run_name=run.run_name,
+        target=run.target,
+        domain=domain_name,
+        status=run.status,
+        start_ts=run.start_ts,
+        end_ts=run.end_ts
+    )
+
+    details = db.get_all_run_details_by_run_name(run_name)
+    evaluations = []
+
+    for d in details:
+        conv = db.get_conversation_by_id(d.conversation_id)
+        print(conv.evaluation_score)
+        if not conv:
+            continue
+        evaluations.append(
+            EvaluationItemResponse(
+                detail_id=d.detail_id,
+                testcase=conv.testcase,
+                agent_response=conv.agent_response,
+                evaluation_score=conv.evaluation_score,
+                evaluation_reason=conv.evaluation_reason,
+                evaluation_ts=conv.evaluation_ts
+            )
+        )
+
+    return RunEvaluationSummaryResponse(run=run_summary, evaluations=evaluations)
+
+
+def download_evaluation_report_service(db, run_name: str):
+    run = db.get_run_by_name(run_name)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    details = db.get_all_run_details_by_run_name(run_name)
+    plan_name = details[0].plan_name if details else None
+
+    conversation_cache = {}
+    testcase_prompt_cache = {}
+    for d in details:
+        if d.conversation_id not in conversation_cache:
+            conversation_cache[d.conversation_id] = db.get_conversation_by_id(d.conversation_id)
+
+    ws_summary = wb["Run_Summary"]
+    testcases = set()
+    total_metrics = len(details)
+
+    for conv in conversation_cache.values():
+        if conv and getattr(conv, "testcase", None):
+            testcases.add(conv.testcase)
+
+    ws_summary["B1"] = run.run_name
+    ws_summary["B2"] = plan_name
+    ws_summary["B3"] = run.status
+    ws_summary["B4"] = len(testcases)
+    ws_summary["B5"] = total_metrics
+
+    ws_details = wb["Evaluation_Details"]
+
+    for d in details:
+        conv = conversation_cache.get(d.conversation_id)
+        if not conv:
+            continue
+
+        metric_name = (
+            getattr(d, "metric", None)
+            or getattr(d, "metric_name", None)
+            or getattr(conv, "metric", None)
+            or getattr(conv, "metric_name", None)
+        )
+
+        testcase_name = getattr(conv, "testcase", None)
+
+        if testcase_name not in testcase_prompt_cache:
+            testcase = db.get_testcase_by_name(testcase_name)
+            if not testcase or not getattr(testcase, "prompt", None):
+                testcase_prompt_cache[testcase_name] = {"user_prompt": None, "system_prompt": None}
+            else:
+                testcase_prompt_cache[testcase_name] = {
+                    "user_prompt": getattr(testcase.prompt, "user_prompt", None),
+                    "system_prompt": getattr(testcase.prompt, "system_prompt", None),
+                }
+
+        prompts = testcase_prompt_cache[testcase_name]
+        ws_details.append([
+            d.detail_id,
+            getattr(conv, "testcase", None),
+            metric_name,
+            getattr(conv, "evaluation_score", None),
+            getattr(conv, "evaluation_reason", None),
+            getattr(conv, "evaluation_ts", None),
+            getattr(conv, "agent_response", None),
+            prompts["user_prompt"],
+            prompts["system_prompt"],
+        ])
+
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    wb.save(tmp_file.name)
+    tmp_file.close()
+
+    return FileResponse(
+        tmp_file.name,
+        filename=f"{run_name}_evaluation_report.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+def get_test_run_summary_service(db, run_name: str):
+    run = db.get_run_by_name(run_name)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    domain_name = None
+    if getattr(run, "target_id", None):
+        target = db.get_target_by_id(run.target_id)
+        if target:
+            domain_name = getattr(target, "target_domain", None)
+
+    return TestRunSummaryResponse(
+        run_id=run.run_id,
+        run_name=run.run_name,
+        target=run.target,
+        domain=domain_name,
+        status=run.status,
+        start_ts=run.start_ts,
+        end_ts=run.end_ts
+    )
 
 # def start_run_service(db, data: NewTestRun, background_tasks: BackgroundTasks):    
 #     ensure_interface_manager_running(interface_manager_config)

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from schemas import AllFiltersResponse
 from services.filters import get_all_filters_service
-from database.database import get_db
+from configuration.database import get_db
 
 router = APIRouter()
 

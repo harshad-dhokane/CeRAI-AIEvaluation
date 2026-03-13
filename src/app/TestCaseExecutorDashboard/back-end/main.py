@@ -29,12 +29,14 @@ from lib.data import Target, Run, RunDetail, Conversation
 
 from lib.orm.tables import TestRuns
 from lib.interface_manager import InterfaceManagerClient  # Import the InterfaceManagerClient from the lib directory
-from database.database import get_db
-from database.database import db
+from configuration.database import get_db
+from configuration.database import db
 
 from apis.testruns import router as testruns_router
 from apis.filters import router as filters_router
 from apis.analyse import router as analyse_router
+from apis.conversations import router as conversations_router
+
 from utils.port import check_service, ensure_interface_manager_port_running
 
 # db_url = (
@@ -57,16 +59,12 @@ except FileNotFoundError:
     config = {}
 
 
-
 port_config = config.get("port", {})
 BACKEND_PORT = int(port_config.get("back-end", 7000))
 
 
-
 # Resolve project root (this file → importer → app → src → project_root)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
-
-
 
 
 interface_manager_root=os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
@@ -107,6 +105,8 @@ app.add_middleware(
 app.include_router(testruns_router)
 app.include_router(filters_router)
 app.include_router(analyse_router)
+app.include_router(conversations_router)
+
 
 def load_config():
     with open(config_path , "r") as f:
@@ -179,202 +179,37 @@ async def step(ws_payload, delay=0.1):
 
 
     
-@app.get("/test-runs/{run_name}/summary", response_model=TestRunSummaryResponse)
-def get_test_run_summary(run_name: str):
-    try:
+# @app.get("/test-runs/{run_name}/summary", response_model=TestRunSummaryResponse)
+# def get_test_run_summary(run_name: str):
+#     try:
         
+#         run = db.get_run_by_name(run_name)
+#         if not run:
+#             raise HTTPException(status_code=404, detail="Run not found")
 
-        run = db.get_run_by_name(run_name)
-        if not run:
-            raise HTTPException(status_code=404, detail="Run not found")
+#         # If you store target_id on run, use it to fetch target -> domain
+#         domain_name = None
+#         if getattr(run, "target_id", None):
+#             target = db.get_target_by_id(run.target_id)
+#             if target:
+#                 domain_name = getattr(target, "target_domain", None)
 
-        # If you store target_id on run, use it to fetch target -> domain
-        domain_name = None
-        if getattr(run, "target_id", None):
-            target = db.get_target_by_id(run.target_id)
-            if target:
-                domain_name = getattr(target, "target_domain", None)
+#         return TestRunSummaryResponse(
+#             run_id=run.run_id,
+#             run_name=run.run_name,
+#             target=run.target,
+#             domain=domain_name,
+#             status=run.status,
+#             start_ts=run.start_ts,
+#             end_ts=run.end_ts
+#         )
 
-        return TestRunSummaryResponse(
-            run_id=run.run_id,
-            run_name=run.run_name,
-            target=run.target,
-            domain=domain_name,
-            status=run.status,
-            start_ts=run.start_ts,
-            end_ts=run.end_ts
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))    
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))    
     
-@app.get(
-    "/test-runs/{run_name}/evaluation-summary",
-    response_model=RunEvaluationSummaryResponse
-)
-def get_run_evaluation_summary(run_name: str):
-    try:
-       
-        run= db.get_run_by_name(run_name)
-        if not run:
-            raise HTTPException(status_code=404, detail="Run not found")
-        domain_name = None
-        if getattr(run, "target_id", None):
-            target = db.get_target_by_id(run.target_id)
-            if target:
-                domain_name = getattr(target, "target_domain", None)
-        run_summary = TestRunSummaryResponse(
-            run_id=run.run_id,
-            run_name=run.run_name,
-            target=run.target,
-            domain=domain_name,
-            status=run.status,
-            start_ts=run.start_ts,
-            end_ts=run.end_ts
-        )        
-        details = db.get_all_run_details_by_run_name(run_name)
 
-        evaluations=[]
-
-        for d in details:
-            conv = db.get_conversation_by_id(d.conversation_id)
-            print(conv.evaluation_score)
-            if not conv:
-                continue
-            evaluations.append(
-                EvaluationItemResponse(
-                    detail_id=d.detail_id,
-                    testcase=conv.testcase,
-                    agent_response=conv.agent_response,
-                    evaluation_score=conv.evaluation_score,
-                    evaluation_reason=conv.evaluation_reason,
-                    evaluation_ts=conv.evaluation_ts
-                )
-            )
-
-        return RunEvaluationSummaryResponse(
-            run=run_summary,
-            evaluations=evaluations
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-   
-
-@app.get("/test-runs/{run_name}/evaluation-report")
-def download_evaluation_report(run_name: str):
-    try:
-        
-
-        # -------------------------------------------------
-        # FETCH RUN
-        # -------------------------------------------------
-        run = db.get_run_by_name(run_name)
-        if not run:
-            raise HTTPException(status_code=404, detail="Run not found")
-        
-        details = db.get_all_run_details_by_run_name(run_name)
-        plan_name = details[0].plan_name if details else None
-        # Cache conversations
-        conversation_cache = {}
-        testcase_prompt_cache = {}
-        for d in details:
-            if d.conversation_id not in conversation_cache:
-                conversation_cache[d.conversation_id] = db.get_conversation_by_id(
-                    d.conversation_id
-                )
-
-        
-
-        # =================================================
-        # SHEET 1 : RUN SUMMARY (NO BS)
-        # =================================================
-        ws_summary = wb["Run_Summary"]
-
-        # Collect counts
-        testcases = set()
-        total_metrics = len(details)
-
-        for conv in conversation_cache.values():
-            if conv and getattr(conv, "testcase", None):
-                testcases.add(conv.testcase)
-
-        ws_summary["B1"] = run.run_name
-        ws_summary["B2"] = plan_name
-        ws_summary["B3"] = run.status
-        ws_summary["B4"] = len(testcases)
-        ws_summary["B5"] = total_metrics
-
-        # =================================================
-        # SHEET 2 : EVALUATION DETAILS (TESTCASE + METRIC)
-        # =================================================
-        
-
-        ws_details = wb["Evaluation_Details"]
-
-        # Start inserting after header row
-        start_row = ws_details.max_row + 1
-
-        for d in details:
-            conv = conversation_cache.get(d.conversation_id)
-            if not conv:
-                continue
-
-            metric_name = (
-                getattr(d, "metric", None)
-                or getattr(d, "metric_name", None)
-                or getattr(conv, "metric", None)
-                or getattr(conv, "metric_name", None)
-            )
-
-            testcase_name = getattr(conv, "testcase", None)
-
-            if testcase_name not in testcase_prompt_cache:
-                testcase = db.get_testcase_by_name(testcase_name)
-
-                if not testcase or not getattr(testcase, "prompt", None):
-                    testcase_prompt_cache[testcase_name] = {
-                        "user_prompt": None,
-                        "system_prompt": None,
-                    }
-                else:
-                    testcase_prompt_cache[testcase_name] = {
-                        "user_prompt": getattr(testcase.prompt, "user_prompt", None),
-                        "system_prompt": getattr(testcase.prompt, "system_prompt", None),
-                    }
-
-            prompts = testcase_prompt_cache[testcase_name]
-
-            ws_details.append([
-                d.detail_id,
-                getattr(conv, "testcase", None),
-                metric_name,
-                getattr(conv, "evaluation_score", None),
-                getattr(conv, "evaluation_reason", None),
-                getattr(conv, "evaluation_ts", None),
-                getattr(conv, "agent_response", None),
-                prompts["user_prompt"],
-                prompts["system_prompt"],
-            ])
-
-        # =================================================
-        # SAVE FILE
-        # =================================================
-        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        wb.save(tmp_file.name)
-        tmp_file.close()
-
-        return FileResponse(
-            tmp_file.name,
-            filename=f"{run_name}_evaluation_report.xlsx",
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
     
 @app.get(
     "/testcases/{testcase_name}",
@@ -390,45 +225,7 @@ def get_conversation(testcase_name: str):
         system_prompt=testcase.prompt.system_prompt
     )
 
-@app.get(
-    "/conversations/full/{conversation_id}",
-    response_model=FullConversationResponse
-)
-def get_full_conversation(conversation_id: int):
-    
-    conversation = db.get_conversation_by_id(conversation_id)
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
 
-    testcase_name = conversation.testcase
-    testcase = db.get_testcase_by_name(testcase_name)
-    if not testcase:
-        user_prompt = None
-        system_prompt = None
-    else:
-        user_prompt = getattr(testcase.prompt, "user_prompt", None)
-        system_prompt = getattr(testcase.prompt, "system_prompt", None)
-
-    return FullConversationResponse(
-        user_prompt=user_prompt,
-        system_prompt=system_prompt,
-        agent_response=conversation.agent_response,
-        testcase_name=testcase_name,
-        conversation_id=conversation_id,
-        target=conversation.target,
-        score=conversation.evaluation_score,
-        reason=conversation.evaluation_reason
-    )
-
-@app.get("/conversations/{conversation_id}/timeline")
-def get_conversation_timeline_api(conversation_id: int):
-    
-    timeline = db.get_conversation_timeline(conversation_id)
-
-    if not timeline:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-
-    return timeline
 
 
 @app.post("/start-run")

@@ -3,7 +3,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from services.analyse import get_analyse_status_service, start_analyse_service
 
 router = APIRouter()
-from database.database import get_db
+from configuration.database import get_db
 
 @router.get("/analyse/{RunName}")
 def get_analyse(RunName: str, background_tasks: BackgroundTasks, db=Depends(get_db)):

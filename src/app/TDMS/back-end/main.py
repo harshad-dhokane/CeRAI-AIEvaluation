@@ -49,7 +49,7 @@ from api.v2.endpoints import (
     metric,
     testplan as testplan_v2,
 )
-from database.database import init_db, seed_users
+from configuration.database import init_db, seed_users
 
 # from config.logger import get_logger
 from fastapi import FastAPI
