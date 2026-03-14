@@ -9,6 +9,7 @@ import json
 from typing import List
 from rich.console import Console
 from rich.table import Table
+from pathlib import Path
 
 # setup the relative import path for data module.
 sys.path.append(os.path.join(os.path.dirname(__file__) + '/../../'))  # Adjust the path to 
@@ -56,7 +57,8 @@ def main():
         return
     
     # Load configuration from the specified file if provided
-    config_path = os.path.join(os.path.dirname(__file__), "../../../", args.config)
+    BASE_DIR = Path(__file__).resolve().parents[3]
+    config_path = BASE_DIR / args.config
     if args.config:
         if not os.path.exists(config_path):
             logger.error(f"Configuration file '{args.config}' does not exist.")

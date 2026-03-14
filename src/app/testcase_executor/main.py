@@ -14,6 +14,7 @@ from rich.console import Console
 from rich.table import Table
 from datetime import datetime
 import randomname  # Importing the randomname library for generating random names
+from pathlib import Path
 
 sys.path.append(os.path.dirname(__file__) + "/../../")  # Adjust the path to include the "lib" directory
 
@@ -103,7 +104,8 @@ def main():
         return
     
     # Load configuration from the specified file if provided
-    config_path = os.path.join(os.path.dirname(__file__), "../../../", args.config)
+    BASE_DIR = Path(__file__).resolve().parents[3]
+    config_path = BASE_DIR / "config.json"
     if args.config:
         if not os.path.exists(config_path):
             logger.error(f"Configuration file '{args.config}' does not exist.")
