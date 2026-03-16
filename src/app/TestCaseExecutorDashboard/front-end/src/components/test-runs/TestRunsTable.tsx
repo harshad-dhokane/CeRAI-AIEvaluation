@@ -12,6 +12,8 @@ interface TestRun {
   start_ts: string;
   end_ts: string | null;
   domain: string;
+  duration_ms?: number;
+  average_score?: number | null;
 }
 
 interface HeaderConfig {
@@ -83,11 +85,12 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
     { key: "run_name", label: "Run Name", filterable: false },
     { key: "target", label: "Target", filterable: true, filterType: "target" },
     { key: "start_ts", label: "Started At", filterable: false, sortable: true, sortKey: "start_ts" },
-    { key: "end_ts", label: "Ended At", filterable: false, sortable: true, sortKey: "end_ts" },
+    // { key: "end_ts", label: "Ended At", filterable: false, sortable: true, sortKey: "end_ts" },
     { key: "duration", label: "Duration", filterable: false },
+    { key: "average_score", label: "Score", filterable: false },
     { key: "status", label: "Status", filterable: true, filterType: "status" },
     { key: "domain", label: "Domain", filterable: true, filterType: "domain" },
-    { key: "report", label: "Report", filterable: false },
+    { key: "actions", label: "Actions", filterable: false },
   ];
 
   useEffect(() => {
@@ -176,9 +179,13 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
         }
         return res.json();
       })
-      .then((data: TestRun[]) => {
-        setRuns(data);
-        setFilteredRuns(data);
+      .then((data: TestRun[] | { detail?: string }) => {
+        const safeRuns = Array.isArray(data) ? data : [];
+        if (!Array.isArray(data)) {
+          console.error("Unexpected test-runs response:", data);
+        }
+        setRuns(safeRuns);
+        setFilteredRuns(safeRuns);
         setCurrentPage(1);
       })
       .catch((err) => console.error("Error fetching test runs:", err))
@@ -187,8 +194,9 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
 
   const indexOfLastRun = currentPage * itemsPerPage;
   const indexOfFirstRun = indexOfLastRun - itemsPerPage;
-  const currentRuns = filteredRuns.slice(indexOfFirstRun, indexOfLastRun);
-  const totalPages = Math.ceil(filteredRuns.length / itemsPerPage);
+  const safeFilteredRuns = Array.isArray(filteredRuns) ? filteredRuns : [];
+  const currentRuns = safeFilteredRuns.slice(indexOfFirstRun, indexOfLastRun);
+  const totalPages = Math.ceil(safeFilteredRuns.length / itemsPerPage);
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
@@ -346,12 +354,15 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
                     <td>{run.run_name}</td>
                     <td>{run.target}</td>
                     <td>{new Date(run.start_ts).toLocaleString()}</td>
-                    <td>{run.end_ts ? new Date(run.end_ts).toLocaleString() : "-"}</td>
+                    {/* <td>{run.end_ts ? new Date(run.end_ts).toLocaleString() : "-"}</td> */}
                     <td>
-                      {run.end_ts
-                        ? `${Math.round(
-                            (new Date(run.end_ts).getTime() - new Date(run.start_ts).getTime()) / 1000
-                          )}s`
+                      {run.duration_ms != null
+                        ? formatDuration(run.duration_ms)
+                        : "-"}
+                    </td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      {typeof run.average_score === "number"
+                        ? run.average_score.toFixed(2)
                         : "-"}
                     </td>
                     <td>
@@ -370,21 +381,46 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
                       </span>
                     </td>
                     <td>{run.domain}</td>
-                    <td className="report-cell" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="report-button"
-                        onClick={() => {
-                          const link = document.createElement("a");
-                          link.href = API_ENDPOINTS.DOWNLOAD_REPORT(run.run_name);
-                          link.setAttribute("download", `${run.run_name}-evaluation.xlsx`);
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                      >
-                        <i className="bi bi-file-earmark-text"></i>
-                        <span>Report</span>
-                      </button>
+                    <td className="actions-cell" onClick={(e) => e.stopPropagation()}>
+                      <div className="actions-group">
+                        <button
+                          type="button"
+                          className="action-icon-button action-continue"
+                          data-tooltip="Continue"
+                          onClick={() => navigate(`/continue-run/${run.run_name}`)}
+                          title="Continue"
+                          aria-label={`Continue ${run.run_name}`}
+                        >
+                          <i className="bi bi-arrow-clockwise"></i>
+                        </button>
+                        <button
+                          type="button"
+                          className="action-icon-button action-analyse"
+                          data-tooltip="Analyse"
+                          onClick={() => navigate(`/analyse/${encodeURIComponent(run.run_name)}`)}
+                          title="Analyse"
+                          aria-label={`Analyse ${run.run_name}`}
+                        >
+                          <i className="bi bi-bar-chart-fill"></i>
+                        </button>
+                        <button
+                          type="button"
+                          className="action-icon-button action-report"
+                          data-tooltip="Report"
+                          onClick={() => {
+                            const link = document.createElement("a");
+                            link.href = API_ENDPOINTS.DOWNLOAD_REPORT(run.run_name);
+                            link.setAttribute("download", `${run.run_name}-evaluation.xlsx`);
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                          title="Report"
+                          aria-label={`Download report for ${run.run_name}`}
+                        >
+                          <i className="bi bi-clipboard2-check"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -456,7 +492,7 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
       )}
       
       <div className="table-footer">
-        Showing {currentRuns.length} of {filteredRuns.length} test runs
+        Showing {currentRuns.length} of {safeFilteredRuns.length} test runs
       </div>
       </div>
     </div>
@@ -464,3 +500,35 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
 };
 
 export default TestRunsTable;
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  
+  if (seconds < 1) return '<1s';
+  if (seconds < 60) return `${seconds}s`;
+  
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  
+  if (minutes < 60) {
+    return remainingSeconds > 0 
+      ? `${minutes}m ${remainingSeconds}s`
+      : `${minutes}m`;
+  }
+  
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  
+  if (hours < 24) {
+    return remainingMinutes > 0
+      ? `${hours}h ${remainingMinutes}m`
+      : `${hours}h`;
+  }
+  
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  
+  return remainingHours > 0
+    ? `${days}d ${remainingHours}h`
+    : `${days}d`;
+}

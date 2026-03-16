@@ -9,6 +9,8 @@ import NewTestRunPage from "./components/new-test-run/NewTestRunPage";
 import DevConfigPage from "./components/DevConfig/DevConfig";
 import ContinueRunPage from "./components/continue-test-run/ContinueTestRunPage";
 import Sidebar from "./components/common/sidebar/sidebar";
+import Analysis from "./components/Analysis/Analysis";
+
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -37,6 +39,7 @@ function App() {
           <Route path="/create-test-run" element={<NewTestRunPage />} />
           <Route path="/continue-run/:runName" element={<ContinueRunPage />} />
           <Route path="/__dev/config" element={<DevConfigPage />} />
+          <Route path="/analyse/:runName" element={<Analysis/>} />
         </Routes>
       </main>
     </div>

@@ -9,6 +9,8 @@ class TestRunResponse(BaseModel):
     start_ts: str
     end_ts: Optional[str]
     domain: Optional[str] 
+    duration_ms: Optional[int] = None
+    average_score: Optional[float] = None
 
 class TestRunDetailsResponse(BaseModel):
     run_name: str

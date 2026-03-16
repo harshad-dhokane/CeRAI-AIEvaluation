@@ -10,6 +10,10 @@ export const LOGIN_URL =
  export const API_ENDPOINTS = {
     GET_ALL_FILTERS: "/get_all_filters",
     GET_ALL_TEST_RUNS: "/get_all_test_runs",
+    ANALYSE_RUN: (runName: string) =>
+    `${API_BASE_URL}/analyse/${encodeURIComponent(runName)}`,
+    ANALYSE_RUN_STATUS: (runName: string) =>
+    `${API_BASE_URL}/analyse/${encodeURIComponent(runName)}/status`,
     DOWNLOAD_REPORT: (runName: string) =>
     `${API_BASE_URL}/test-runs/${runName}/evaluation-report`,
     GET_CONVERSATION: (conversationId: string) =>
