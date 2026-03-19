@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, Query, WebSocket, BackgroundTasks,We
 from fastapi.responses import FileResponse
 from services.ws_manager import ws_manager 
 from openpyxl import Workbook, load_workbook
+import threading
 from typing import Optional, List,Literal
 import tempfile
 import socket
@@ -37,7 +38,7 @@ from apis.filters import router as filters_router
 from apis.analyse import router as analyse_router
 from apis.conversations import router as conversations_router
 
-from utils.port import check_service, ensure_interface_manager_port_running
+from utils.port import check_service, ensure_interface_manager_port_running, stop_interface_manager, watch_chrome_and_kill_im, watch_im_process
 
 # db_url = (
 #             f"mysql+mysqlconnector://"
@@ -172,6 +173,7 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
+       
 
 async def step(ws_payload, delay=0.1):
     await ws_manager.send_all(ws_payload)
@@ -257,7 +259,7 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
                 status_code=400,
                 detail="maxTestCases must be a valid number"
             )
-        ## Create a random name for the run and generating run id
+        
 
         if provided_run_name:
             run_name = provided_run_name
@@ -267,9 +269,6 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
         run = Run(target=target, run_name=run_name, start_ts=start_time)
         run_id = db.add_or_update_testrun(run)
         print(f"Starting run: {run_name} with run id {run_id}")
-
-        
-        # plan_name = db.get_testplan_name(plan_id=test_plan_id)
         
         if plan_name is None:
             print(f"No test plan found with name {plan_name}.")
@@ -283,16 +282,7 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
                     status_code=500,
                     detail=f"Test case ID '{test_case_id}' does not exist"
                 )
-            # is_valid = db.is_testcase_in_testplan(
-            #     test_case_id=test_case_id,
-            #     plan_name=plan_name
-            # )
-
-            # if not is_valid:
-            #     raise HTTPException(
-            #         status_code=400,
-            #         detail=f"Test case '{test_case_id}' is not mapped to test plan '{plan_name}'"
-            #     )
+           
             testcases = [testcases]
             total_testcases = len(testcases)
             print(f"Length of testcases: {len(testcases)}")
@@ -345,58 +335,7 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
                 testcases,
                 run
             )
-            # agent_name = target
-            # application_name = target
-            # application_url = "https://web.whatsapp.com"
-            # application_type = "WHATSAPP_WEB"
-            # print("started syncing")
-            # client = InterfaceManagerClient(base_url="http://localhost:8000" ,application_type=application_type, agent_name=agent_name)
-            # client.sync_config({
-            #         "application_name": application_name,
-            #         "application_type": application_type,
-            #         "agent_name": agent_name,
-            #         "application_url": application_url
-            #     })
-            # client.apply_server_config()
-            # for testcase in testcases:
-            #     rundetail = RunDetail(run_name=run_name, plan_name=plan_name, metric_name=testcase.metric, testcase_name=testcase.name)
-            #     rundetail_id = db.add_or_update_testrun_detail(rundetail)
-            #     run_status = db.get_status_by_run_detail_id(run_detail_id=rundetail_id)
-            #     if run_status is not None and run_status == "COMPLETED":
-            #         print(f"Run detail for testcase {testcase.name} (ID: {testcase.testcase_id}) is already completed. Skipping execution.")
-            #         continue
-            #     message_to_agent = testcase.prompt.user_prompt if testcase.prompt.user_prompt else ""
-            #     if testcase.prompt.system_prompt:
-            #         message_to_agent = testcase.prompt.system_prompt + " " + message_to_agent
-
-            #     conv = Conversation(target=target, 
-            #                         run_detail_id=rundetail_id, 
-            #                         testcase=testcase.name)
-            #     conv_id = db.add_or_update_conversation(conversation=conv)
-            #     print(f"A new conversation is created with ID: {conv_id}")
-            #     rundetail.status = "RUNNING"
-            #     db.add_or_update_testrun_detail(rundetail)
-            #     # print("completed")
-                
-            #     conv.prompt_ts = datetime.now().isoformat()
-            #     db.add_or_update_conversation(conversation=conv)
-            #     print("prompt time added")    
-            #     response_from_agent = client.chat(chat_id = testcase.testcase_id, prompt_list=[message_to_agent])
-            #     agent_response = response_from_agent.json().get("response", "")
-            #     if len(agent_response) == 0 or agent_response[0]['response'] == "Chat not found":
-            #         print(f"No response received from the agent for test case {testcase.testcase_id}.")
-            #         rundetail.status = "FAILED"
-            #         db.add_or_update_testrun_detail(rundetail)
-            #         continue
-            #     conv.response_ts = datetime.now().isoformat()
-            #     print("Response time added") 
-            #     conv.agent_response = agent_response[0]['response']
-            #     db.add_or_update_conversation(conversation=conv)
-            #     rundetail.status = "COMPLETED"
-            #     db.add_or_update_testrun_detail(rundetail)
-            #     print("completed Response time")
             
-        # 🔹 Get testcases count (NO execution here)
 
         else:
             testcases = db.get_testcases_by_testplan(plan_name=plan_name, n=max_test_cases, lang_names=lang_name, domain_name=domain_name)
@@ -530,6 +469,14 @@ async def execute_testcases(
     print(f"🚀 Background execution started for run {run_id}")
     client = None
     try:
+        print("started")
+        stop_watcher = threading.Event()
+        watcher_thread = threading.Thread(
+                target=watch_im_process,
+                args=(interface_manager_config, "/home/varun/test_profile", stop_watcher),  # 👈 pass profile path here
+                daemon=True
+            )
+        watcher_thread.start()
         agent_name = target
         application_name = target
         target_obj = db.get_target_by_name(target)
@@ -671,9 +618,11 @@ async def execute_testcases(
                     rundetail.status = "FAILED"
                     db.add_or_update_testrun_detail(rundetail)
                 continue
-
+            
+        stop_watcher.set()        
         run.end_ts = datetime.now().isoformat()
         run.status = "COMPLETED"
+        
         db.add_or_update_testrun(run=run)
         await ws_manager.send_all({
             "type": "RUN_FINISHED",
@@ -698,7 +647,10 @@ async def execute_testcases(
             print(f"Failed to push RUN_FINISHED for failed run {run_id}: {ws_error}")
     finally:
         if client is not None:
-            client.close()
+            try:
+                client.close()
+            except:
+                print(f"Client close failed (IM already dead): {e}")    
 
 
 
