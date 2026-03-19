@@ -34,10 +34,8 @@ export const clearStoredTokens = () => {
 
 export const isAuthenticated = () => !!localStorage.getItem(AUTH_KEYS.ACCESS_TOKEN);
 
-export const parseUrlHashTokens = () => {
-  const hash = window.location.hash.replace(/^#/, '');
-  if (!hash) return null;
-  const values = Object.fromEntries(new URLSearchParams(hash));
+const storeTokensFromParams = (params: URLSearchParams): boolean => {
+  const values = Object.fromEntries(params);
 
   if (values.access_token && values.refresh_token) {
     setStoredTokens({
@@ -47,7 +45,28 @@ export const parseUrlHashTokens = () => {
       role: values.role || '',
     });
     window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-    return values;
+    return true;
+  }
+
+  return false;
+};
+
+export const parseUrlHashTokens = (): null => {
+  const hash = window.location.hash.replace(/^#/, '');
+  if (!hash) return null;
+  storeTokensFromParams(new URLSearchParams(hash));
+  return null;
+};
+
+export const parseUrlTokens = (): null => {
+  const hash = window.location.hash.replace(/^#/, '');
+  if (hash && storeTokensFromParams(new URLSearchParams(hash))) {
+    return null;
+  }
+
+  const search = window.location.search.replace(/^\?/, '');
+  if (search) {
+    storeTokensFromParams(new URLSearchParams(search));
   }
 
   return null;
@@ -74,4 +93,20 @@ export const refreshAccessToken = async (refreshUrl: string): Promise<boolean> =
   }
 
   return false;
+};
+
+export const getValidAccessToken = async (refreshUrl: string): Promise<string | null> => {
+  parseUrlTokens();
+
+  const existingToken = localStorage.getItem(AUTH_KEYS.ACCESS_TOKEN);
+  if (existingToken) {
+    return existingToken;
+  }
+
+  const refreshed = await refreshAccessToken(refreshUrl);
+  if (!refreshed) {
+    return null;
+  }
+
+  return localStorage.getItem(AUTH_KEYS.ACCESS_TOKEN);
 };

@@ -158,14 +158,11 @@ const Sidebar = () => {
         <button
           type="button"
           onClick={async () => {
-            const refreshToken = localStorage.getItem("refresh_token");
-            if (refreshToken) {
-              await fetch(`${import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:7500"}/logout`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ refresh_token: refreshToken }),
-              }).catch(() => void 0);
-            }
+            const authUrl = import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:7500";
+            await fetch(`${authUrl}/web/logout?return_url=${encodeURIComponent(window.location.origin + '/login')}`, {
+              method: "GET",
+              credentials: "include",
+            }).catch(() => void 0);
             localStorage.removeItem("access_token");
             localStorage.removeItem("refresh_token");
             localStorage.removeItem("user_name");

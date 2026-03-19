@@ -3,10 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import { isAuthenticated, parseUrlHashTokens } from "./utils/auth";
+import { isAuthenticated, parseUrlTokens } from "./utils/auth";
 import TestCases from "./pages/TestCases";
 import Responses from "./pages/Responses";
 import Users from "./pages/Users";
@@ -30,7 +29,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        {parseUrlHashTokens()}
+        {parseUrlTokens()}
         <Routes>
           <Route path="/" element={isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Login />} />
           <Route path="/dashboard" element={isAuthenticated() ? <Dashboard /> : <Navigate to="/" replace />} />

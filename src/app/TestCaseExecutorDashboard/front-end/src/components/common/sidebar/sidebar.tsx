@@ -38,16 +38,14 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
   const handleLogout = async () => {
     const refreshToken = localStorage.getItem("refresh_token");
 
-    if (refreshToken) {
-      try {
-        await fetch(`${process.env.REACT_APP_AUTH_SERVICE_URL || "http://localhost:7500"}/logout`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
-      } catch (error) {
-        console.warn("Logout request failed", error);
-      }
+    try {
+      const authUrl = process.env.REACT_APP_AUTH_SERVICE_URL || "http://localhost:7500";
+      await fetch(`${authUrl}/web/logout?return_url=${encodeURIComponent(window.location.origin + '/login')}`, {
+        method: "GET",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.warn("Logout request failed", error);
     }
 
     localStorage.removeItem("access_token");
