@@ -7,6 +7,7 @@ import threading
 from typing import Optional, List,Literal
 import tempfile
 import socket
+import psutil
 import os
 import re
 from urllib.parse import urlparse
@@ -112,6 +113,15 @@ app.include_router(conversations_router)
 def load_config():
     with open(config_path , "r") as f:
         return json.load(f)
+
+def is_error_response(response):
+    error_indicators = [
+        "chat not found",
+        "[error: max retries exceeded]",
+        "[error: connection refused]",
+        "no response received"
+    ]
+    return len(response) == 0 or any(indicator in response[0]['response'].lower() for indicator in error_indicators)
 
 ## to check if interface_manager is running ##
 
@@ -264,7 +274,7 @@ def start_run(data: NewTestRun, background_tasks: BackgroundTasks):
         if provided_run_name:
             run_name = provided_run_name
         else:
-            run_name = randomname.generate('v/*','adj/*','n/*','ip/*')
+            run_name = randomname.generate('v/*','adj/*','n/*','ip/*').replace("/", "-")
         start_time = datetime.now().isoformat()
         run = Run(target=target, run_name=run_name, start_ts=start_time)
         run_id = db.add_or_update_testrun(run)
@@ -406,10 +416,19 @@ def continue_run_with_plan(data: NewTestRun, background_tasks: BackgroundTasks):
 
     run_id = run.run_id
     run_name = run.run_name
+    
 
+    
     plan_name = data.testPlan
     metric_name = data.metric
-
+    testcase_id=data.testCaseId
+    if testcase_id and metric_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide either 'testCaseId' or 'metric', not both."
+            )
+    
+    
     if not plan_name:
         raise HTTPException(status_code=400, detail="Test Plan is required")
 
@@ -426,6 +445,15 @@ def continue_run_with_plan(data: NewTestRun, background_tasks: BackgroundTasks):
             lang_names=data.language,
             domain_name=data.domain
         )
+    elif testcase_id:
+        testcases = db.get_testcase_by_name(testcase_id)
+        if not testcases:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Test case ID '{testcase_id}' does not exist"
+            )    
+        testcases = [testcases]
+        total_testcases = len(testcases)
     else:
         testcases = db.get_testcases_by_testplan(
             plan_name=plan_name,
@@ -523,8 +551,12 @@ async def execute_testcases(
                 "error": str(e)
             })
             return
+        print("⏳ Waiting for WhatsApp to be ready...")
+        
 
+        print("✅ Starting testcase loop!")
         for index, testcase in enumerate(testcases, start=1):
+            
             rundetail = None
             try:
                 rundetail = RunDetail(
@@ -582,11 +614,13 @@ async def execute_testcases(
                     "status": "DONE"
                 })
                 agent_response = response_from_agent.json().get("response", "")
-                if len(agent_response) == 0 or agent_response[0]['response'] == "Chat not found":
-                    print(f"No response received from the agent for test case {testcase.testcase_id}.")
+                
+                if is_error_response(agent_response):
+                    print(f"No response received from the agent for test case 1.")
                     rundetail.status = "FAILED"
                     db.add_or_update_testrun_detail(rundetail)
                     continue
+
                 conv.response_ts = datetime.now().isoformat()
                 conv.agent_response = agent_response[0]['response']
                 db.add_or_update_conversation(conversation=conv)
@@ -618,7 +652,7 @@ async def execute_testcases(
                     rundetail.status = "FAILED"
                     db.add_or_update_testrun_detail(rundetail)
                 continue
-            
+
         stop_watcher.set()        
         run.end_ts = datetime.now().isoformat()
         run.status = "COMPLETED"

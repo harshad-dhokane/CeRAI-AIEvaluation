@@ -133,6 +133,9 @@ const RunTimeline: React.FC<Props> = ({ runName, hoveredMetric, onHoverMetric,on
           );
           const total = end - start || 1;
 
+          // ❌ If no duration, skip this plan entirely
+          if (total <= 0) return null;
+
           return (
             <React.Fragment key={plan}>
               {/* PLAN BLOCK */}
@@ -208,7 +211,7 @@ const RunTimeline: React.FC<Props> = ({ runName, hoveredMetric, onHoverMetric,on
 function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000);
   
-  if (seconds < 1) return '<1s';
+  if (seconds < 1) return '0s';
   if (seconds < 60) return `${seconds}s`;
   
   const minutes = Math.floor(seconds / 60);

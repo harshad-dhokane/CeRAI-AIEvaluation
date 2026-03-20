@@ -25,6 +25,7 @@ def get_all_filters_service(db) -> AllFiltersResponse:
             statuses=[
                 FilterResponse(filter_name="COMPLETED"),
                 FilterResponse(filter_name="RUNNING"),
+                FilterResponse(filter_name="FAILED"),
             ],
             plans=[
                 FilterResponse(filter_name=p.plan_name)
