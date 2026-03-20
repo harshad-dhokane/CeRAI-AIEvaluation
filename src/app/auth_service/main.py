@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, Response, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from controllers import auth
 from database.database import get_db, init_db, seed_users
@@ -27,6 +28,12 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+tdms_assets_dir = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "TDMS", "front-end", "src", "assets")
+)
+if os.path.isdir(tdms_assets_dir):
+    app.mount("/web-assets", StaticFiles(directory=tdms_assets_dir), name="web-assets")
 
 raw_origins = os.getenv("CORS_ALLOW_ORIGINS", "")
 cors_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
@@ -109,7 +116,11 @@ async def web_login(
         except Exception:
             pass
 
-    html = """
+    cerai_logo_url = "/web-assets/cerai-logo.png"
+    iit_logo_url = "/web-assets/iit-logo.png"
+    background_url = "/web-assets/iit-background.jpeg"
+
+    html = f"""
     <!DOCTYPE html>
     <html lang='en'>
     <head>
@@ -117,49 +128,213 @@ async def web_login(
       <meta name='viewport' content='width=device-width, initial-scale=1.0' />
       <title>Central Login</title>
       <style>
-        body {{ font-family: Arial, sans-serif; background:#f5f7ff; display:flex; justify-content:center; align-items:center; min-height:100vh; margin:0; }}
-        .card {{ background:white; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.08); width:min(95%,420px); padding:24px; }}
-        input{{ width:100%; padding:10px; margin:0.33rem 0; border:1px solid #ced4da; border-radius:6px; }}
-        button{{ width:100%; padding:10px; margin-top:10px; border:none; border-radius:6px; background:#4338ca; color:white; font-size:1rem; }}
+        * {{ box-sizing: border-box; }}
+        body {{
+          margin: 0;
+          min-height: 100vh;
+          font-family: Arial, sans-serif;
+          color: #1f2937;
+          background:
+            linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)),
+            url('{background_url}') center center / cover no-repeat fixed;
+        }}
+        .page {{
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+        }}
+        .topbar {{
+          height: 84px;
+          background: rgba(255, 255, 255, 0.96);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 32px;
+          box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+        }}
+        .brand-logo {{
+          height: 52px;
+          width: auto;
+          object-fit: contain;
+        }}
+        .iit-logo {{
+          height: 58px;
+          width: 58px;
+          object-fit: contain;
+        }}
+        .hero {{
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          padding: 40px 10vw 40px 5vw;
+        }}
+        .card {{
+          width: min(100%, 520px);
+          padding: 40px 40px 32px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.76);
+          backdrop-filter: blur(8px);
+          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+        }}
+        .title {{
+          margin: 0 0 28px;
+          text-align: center;
+          font-size: 2.05rem;
+          font-weight: 700;
+          line-height: 1.15;
+          color: #1f2937;
+        }}
+        .field {{
+          margin-bottom: 22px;
+        }}
+        .label {{
+          display: block;
+          margin-bottom: 10px;
+          font-size: 1.05rem;
+          font-weight: 600;
+          color: #2b2f36;
+        }}
+        input {{
+          width: 100%;
+          height: 48px;
+          padding: 0 14px;
+          border: 1px solid rgba(148, 163, 184, 0.55);
+          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.95);
+          font-size: 1rem;
+          outline: none;
+        }}
+        input:focus {{
+          border-color: #22c55e;
+          box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+        }}
+        .password-wrap {{
+          position: relative;
+        }}
+        .toggle-password {{
+          position: absolute;
+          top: 50%;
+          right: 12px;
+          transform: translateY(-50%);
+          border: 0;
+          padding: 4px;
+          margin: 0;
+          width: auto;
+          background: transparent;
+          color: #6b7280;
+          cursor: pointer;
+          font-size: 1.05rem;
+        }}
+        .login-btn {{
+          display: block;
+          width: 144px;
+          height: 48px;
+          margin: 18px auto 0;
+          border: none;
+          border-radius: 4px;
+          background: #2dbd2d;
+          color: #fff;
+          font-size: 1.05rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.2s ease;
+        }}
+        .login-btn:hover {{
+          background: #25a525;
+        }}
+        .error {{
+          min-height: 22px;
+          margin-top: 16px;
+          text-align: center;
+          color: #b42318;
+          font-size: 0.95rem;
+          font-weight: 600;
+        }}
+        @media (max-width: 900px) {{
+          .hero {{
+            justify-content: center;
+            padding: 32px 20px;
+          }}
+          .card {{
+            padding: 28px 22px 24px;
+          }}
+          .title {{
+            font-size: 1.7rem;
+          }}
+          .topbar {{
+            padding: 0 18px;
+          }}
+          .brand-logo {{
+            height: 42px;
+          }}
+          .iit-logo {{
+            height: 46px;
+            width: 46px;
+          }}
+        }}
       </style>
     </head>
     <body>
-    <div class='card'>
-      <h2>Central Login</h2>
-      <p>Use your shared credentials across applications.</p>
-      <form id='login-form'>
-        <input id='user_name' name='user_name' placeholder='Username' required />
-        <input id='password' name='password' placeholder='Password' type='password' required />
-        <button type='submit'>Sign in</button>
-      </form>
-      <div id='error' style='color:#c53030;margin-top:12px; font-size:.9rem;'></div>
+    <div class='page'>
+      <header class='topbar'>
+        <img class='brand-logo' src='{cerai_logo_url}' alt='CeRAI logo' />
+        <img class='iit-logo' src='{iit_logo_url}' alt='IIT Madras logo' />
+      </header>
+      <main class='hero'>
+        <section class='card'>
+          <h1 class='title'>Test Data Management<br />System</h1>
+          <form id='login-form'>
+            <div class='field'>
+              <label class='label' for='user_name'>User Name :</label>
+              <input id='user_name' name='user_name' autocomplete='username' required />
+            </div>
+            <div class='field'>
+              <label class='label' for='password'>Password :</label>
+              <div class='password-wrap'>
+                <input id='password' name='password' type='password' autocomplete='current-password' required />
+                <button class='toggle-password' id='toggle-password' type='button' aria-label='Show password'>◉</button>
+              </div>
+            </div>
+            <button class='login-btn' type='submit'>Login</button>
+          </form>
+          <div id='error' class='error'></div>
+        </section>
+      </main>
     </div>
     <script>
       const q = new URLSearchParams(window.location.search);
-      const returnUrl = q.get('return_url') || 'http://localhost:7500/web/portal';
-      document.getElementById('login-form').onsubmit = async (e) => {
+      const returnUrl = q.get('return_url') || {return_url!r};
+      const passwordInput = document.getElementById('password');
+      const togglePassword = document.getElementById('toggle-password');
+      togglePassword.onclick = () => {{
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        togglePassword.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+      }};
+      document.getElementById('login-form').onsubmit = async (e) => {{
         e.preventDefault();
         const user_name = document.getElementById('user_name').value;
         const password = document.getElementById('password').value;
-        const res = await fetch('/login', {
+        const res = await fetch('/login', {{
           method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ user_name, password })
-        });
+          headers:{{'Content-Type':'application/json'}},
+          body: JSON.stringify({{ user_name, password }})
+        }});
         const data = await res.json();
-        if (!res.ok) {
+        if (!res.ok) {{
           document.getElementById('error').innerText = data.detail || 'Login failed';
           return;
-        }
+        }}
         const url = new URL(returnUrl, window.location.origin);
-        const fragment = new URLSearchParams({
+        const fragment = new URLSearchParams({{
           access_token: data.access_token,
           refresh_token: data.refresh_token,
           user_name: data.user_name,
           role: data.role,
-        }).toString();
-        window.location.href = `${url.toString()}#${fragment}`;
-      };
+        }}).toString();
+        window.location.href = `${{url.toString()}}#${{fragment}}`;
+      }};
     </script>
     </body>
     </html>
