@@ -11,7 +11,7 @@ interface RunFormData {
   runName: string;
   // target: string;
   testPlan: string; 
-  testCaseId: number | null;
+  testCaseId: string ;
   metric: string;
   maxTestCases: string;
   domain: string;
@@ -48,7 +48,7 @@ const ContinueRunPage: React.FC = () => {
     runName: "",
     // target: "",
     testPlan: "",
-    testCaseId: null,
+    testCaseId: "",
     metric: "",
     maxTestCases: "10",
     domain: "",
@@ -56,6 +56,7 @@ const ContinueRunPage: React.FC = () => {
   });
 
   const isStartDisabled = !formData.testPlan || isRunning;
+  
 
   const { runName } = useParams();
 
@@ -105,6 +106,7 @@ const ContinueRunPage: React.FC = () => {
     }
 
     const data = await res.json();
+    
     setExistingRun(data.run);
     if (data.run?.target) {
       fetchTargetMetadata(data.run.target);
@@ -294,13 +296,15 @@ const ContinueRunPage: React.FC = () => {
                     </div>
 
                     <div className="filter-item">
-                      <label>Test Case ID</label>
+                      <label>Test Case Name</label>
                       <input
-                        type="number"
-                        placeholder="Enter Test Plan ID"
+                        type="text"
+                        placeholder={
+                          formData.testPlan ? "Enter TestCase Name" : "Select Test Plan first"
+                        }
                         value={formData.testCaseId ?? ""}
                         disabled={!formData.testPlan}
-                        onChange={(e) => handleChange("testCaseId", Number(e.target.value))}
+                        onChange={(e) => handleChange("testCaseId", e.target.value)}
                       />
                     </div>
 
@@ -308,7 +312,7 @@ const ContinueRunPage: React.FC = () => {
                       <label>Metric</label>
                       <CustomSelect
                         options={planMetrics}
-                        defaultText={formData.testPlan ? "Select Metric" : "Select Test Plan first"}
+                        defaultText={formData.testPlan ? "All Metrics" : "Select Test Plan first"}
                         disabled={!formData.testPlan}
                         onChange={(val) => handleChange("metric", val)}
                       />
@@ -329,7 +333,7 @@ const ContinueRunPage: React.FC = () => {
                       <label>Domain</label>
                       <CustomSelect
                        options={domainOptions }
-                        defaultText="Select Domain"
+                        defaultText="All Domains"
                         onChange={(val) => handleChange("domain", val)}
                       />
                     </div>
@@ -338,7 +342,7 @@ const ContinueRunPage: React.FC = () => {
                       <label>Language</label>
                       <CustomSelect
                         options={languageOptions}
-                        defaultText="Select Language"
+                        defaultText="All Languages"
                         onChange={(val) => handleChange("language", val)}
                       />
                     </div>

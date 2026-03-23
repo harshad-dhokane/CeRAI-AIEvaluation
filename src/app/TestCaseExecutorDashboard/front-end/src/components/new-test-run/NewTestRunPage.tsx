@@ -221,10 +221,12 @@ const handleChange = (key: string, value: any) => {
             />
           </div>
           <div className="filter-item">
-            <label>Test Case ID</label>
+            <label>Test Case Name</label>
             <input
               type="text"
-              placeholder="Enter Test Case ID"
+              placeholder={
+                formData.testPlan ? "Enter TestCase Name" : "Select Test Plan first"
+              }
               value={formData.testCaseId?? ""}
               disabled={!formData.testPlan}
               onChange={(e) =>

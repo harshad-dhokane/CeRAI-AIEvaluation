@@ -14,6 +14,7 @@ interface TestRun {
   domain: string;
   duration_ms?: number;
   average_score?: number | null;
+  evaluation_ts?: string;
 }
 
 interface HeaderConfig {
@@ -88,6 +89,7 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
     // { key: "end_ts", label: "Ended At", filterable: false, sortable: true, sortKey: "end_ts" },
     { key: "duration", label: "Duration", filterable: false },
     { key: "average_score", label: "Score", filterable: false },
+    { key: "evaluation_ts", label: "Evaluation Time", filterable: false },
     { key: "status", label: "Status", filterable: true, filterType: "status" },
     { key: "domain", label: "Domain", filterable: true, filterType: "domain" },
     { key: "actions", label: "Actions", filterable: false },
@@ -365,6 +367,11 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
                         ? run.average_score.toFixed(2)
                         : "-"}
                     </td>
+                     <td>
+                      {run.evaluation_ts != null
+                        ? run.evaluation_ts  // 👈 raw ISO string like "2025-03-20T14:32:00"
+                        : "-"}
+                    </td>
                     <td>
                       <span
                         className={`status-badge ${
@@ -397,7 +404,17 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
                           type="button"
                           className="action-icon-button action-analyse"
                           data-tooltip="Analyse"
-                          onClick={() => navigate(`/analyse/${encodeURIComponent(run.run_name)}`)}
+                          onClick={() => {
+                            if (typeof run.average_score === "number") {
+                              const confirmReanalyse = window.confirm(
+                                "This run already has a score. Do you want to reanalyse?"
+                              );
+
+                              if (!confirmReanalyse) return;
+                            }
+
+                            navigate(`/analyse/${encodeURIComponent(run.run_name)}`);
+                          }}
                           title="Analyse"
                           aria-label={`Analyse ${run.run_name}`}
                         >
@@ -504,7 +521,7 @@ export default TestRunsTable;
 function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000);
   
-  if (seconds < 1) return '<1s';
+  if (seconds < 1) return '0s';
   if (seconds < 60) return `${seconds}s`;
   
   const minutes = Math.floor(seconds / 60);
