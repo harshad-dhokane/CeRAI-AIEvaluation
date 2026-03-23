@@ -8,7 +8,7 @@ interface LoginPageProps {
 const LoginPage: React.FC<LoginPageProps> = () => {
   useEffect(() => {
     const returnUrl = `${window.location.origin}/`;
-    window.location.href = `${AUTH_PAGE_URL}?return_url=${encodeURIComponent(returnUrl)}`;
+    window.location.href = `${AUTH_PAGE_URL}`;
   }, []);
 
   return (
