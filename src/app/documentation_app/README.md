@@ -1,6 +1,6 @@
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js 24.x
 
 
 1. Install dependencies:

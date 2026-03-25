@@ -4,7 +4,13 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import { motion } from 'motion/react';
 import { Loader2, AlertCircle, RefreshCw, Copy, Check, Terminal, ChevronLeft, ChevronRight } from 'lucide-react';
-import { DOCS_CONFIG, DocId } from '../constants/docs';
+import {
+  DOCS_CONFIG,
+  DocId,
+  getDocIdByPath,
+  getRepositoryGithubUrl,
+  getRepositoryRawUrl,
+} from '../constants/docs';
 
 interface DocViewerProps {
   docId: DocId;
@@ -428,6 +434,19 @@ function renderHighlightedCode(code: string, language: SupportedCodeLanguage) {
   });
 }
 
+function resolveRelativeRepositoryPath(basePath: string, href: string) {
+  try {
+    const resolved = new URL(href, `https://docs.local/${basePath}`);
+    return resolved.pathname.replace(/^\//, '');
+  } catch {
+    return href.replace(/^\.?\//, '');
+  }
+}
+
+function isExternalHref(href: string) {
+  return /^(https?:\/\/|mailto:|tel:)/i.test(href);
+}
+
 export function DocViewer({
   docId,
   content,
@@ -482,6 +501,52 @@ export function DocViewer({
             img: ({ node, ...props }) => (
               <img {...props} referrerPolicy="no-referrer" className="rounded-xl border border-border" />
             ),
+            a: ({ node, href, children, ...props }) => {
+              if (!href) {
+                return <span {...props}>{children}</span>;
+              }
+
+              if (href.startsWith('#')) {
+                return (
+                  <a href={href} {...props}>
+                    {children}
+                  </a>
+                );
+              }
+
+              if (isExternalHref(href)) {
+                return (
+                  <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+                    {children}
+                  </a>
+                );
+              }
+
+              const resolvedPath = resolveRelativeRepositoryPath(DOCS_CONFIG[docId].path, href);
+              const targetDocId = getDocIdByPath(resolvedPath);
+
+              if (targetDocId) {
+                return (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate(targetDocId)}
+                    className="cursor-pointer font-medium text-primary hover:underline"
+                  >
+                    {children}
+                  </button>
+                );
+              }
+
+              const repoPath = resolvedPath.startsWith('docs/') ? resolvedPath : resolvedPath;
+              const isRawAsset = /\.(pdf|png|jpe?g|gif|svg|webp)$/i.test(repoPath);
+              const targetHref = isRawAsset ? getRepositoryRawUrl(repoPath) : getRepositoryGithubUrl(repoPath);
+
+              return (
+                <a href={targetHref} target="_blank" rel="noopener noreferrer" {...props}>
+                  {children}
+                </a>
+              );
+            },
             pre: ({ node, children, ...props }) => {
               const text = extractCodeText(children);
               const languageLabel = getCodeLanguageLabel(extractCodeClassName(children));

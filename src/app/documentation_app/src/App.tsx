@@ -6,7 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { DocViewer } from './components/DocViewer';
 import { TableOfContents } from './components/TableOfContents';
 import { SearchBar } from './components/SearchBar';
-import { DOCS_CONFIG, DOC_IDS, DocId } from './constants/docs';
+import { DOCS_CONFIG, DOC_IDS, DocId, DocSectionId } from './constants/docs';
 import aiEvalLogoDark from './assets/ai_eval_logo_dark.png';
 import aiEvalLogoLight from './assets/ai_eval_logo_light.png';
 import ceraiLogo from './assets/cerai-logo.png';
@@ -25,7 +25,7 @@ const createEmptyHeadingsMap = (): Record<DocId, Heading[]> =>
   }, {} as Record<DocId, Heading[]>);
 
 export default function App() {
-  const [activeDoc, setActiveDoc] = useState<DocId>('overview');
+  const [activeDoc, setActiveDoc] = useState<DocId>('overview-home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [content, setContent] = useState<string>('');
@@ -33,6 +33,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+  const [accordionSectionId, setAccordionSectionId] = useState<DocSectionId | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('theme');
@@ -115,16 +116,9 @@ export default function App() {
       if (!response.ok) throw new Error(`Failed to fetch documentation (${response.status})`);
       let text = await response.text();
       const rawBaseUrl = doc.url.substring(0, doc.url.lastIndexOf('/') + 1);
-      const githubBaseUrl = doc.githubUrl.substring(0, doc.githubUrl.lastIndexOf('/') + 1);
-
       // Fix relative image paths
       text = text.replace(/!\[(.*?)\]\((?!https?:\/\/|data:)(.*?)\)/g, (match, alt, path) => {
         return `![${alt}](${resolveRelativeUrl(rawBaseUrl, path)})`;
-      });
-
-      // Fix relative links
-      text = text.replace(/\[(.*?)\]\((?!https?:\/\/|#|mailto:)(.*?)\)/g, (match, linkText, path) => {
-        return `[${linkText}](${resolveRelativeUrl(githubBaseUrl, path)})`;
       });
 
       setContent(text);
@@ -192,6 +186,18 @@ export default function App() {
     setActiveDoc(docId);
   };
 
+  const navigateToDoc = (docId: DocId, options?: { syncSidebarSection?: boolean }) => {
+    if (options?.syncSidebarSection) {
+      setAccordionSectionId(DOCS_CONFIG[docId].sectionId);
+    }
+
+    setActiveDoc(docId);
+  };
+
+  const refreshDocumentationApp = () => {
+    window.location.reload();
+  };
+
   useEffect(() => {
     fetchAllHeadings();
   }, []);
@@ -236,11 +242,18 @@ export default function App() {
             </button>
 
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <img
-                src={theme === 'dark' ? aiEvalLogoDark : aiEvalLogoLight}
-                alt="AI Evaluation Tool"
-                className="h-8 w-auto shrink-0 sm:h-9"
-              />
+              <button
+                type="button"
+                onClick={refreshDocumentationApp}
+                className="shrink-0 rounded-md transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label="Refresh documentation"
+              >
+                <img
+                  src={theme === 'dark' ? aiEvalLogoDark : aiEvalLogoLight}
+                  alt="AI Evaluation Tool"
+                  className="h-8 w-auto shrink-0 sm:h-9"
+                />
+              </button>
               <div className="hidden h-8 w-px bg-sidebar-border sm:block" />
               <a
                 href="https://cerai.iitm.ac.in/"
@@ -260,7 +273,7 @@ export default function App() {
                 href="https://www.iitm.ac.in/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 transition-opacity hover:opacity-80"
+                className="hidden shrink-0 transition-opacity hover:opacity-80 sm:block"
                 aria-label="Visit IIT Madras website"
               >
                 <img
@@ -330,6 +343,7 @@ export default function App() {
             onClose={() => setIsSidebarOpen(false)}
             allHeadings={allHeadings}
             activeHeadingId={activeHeadingId}
+            accordionSectionId={accordionSectionId}
           />
 
           {/* Main Content Area */}
@@ -346,7 +360,7 @@ export default function App() {
                   loading={loading}
                   error={error}
                   onRetry={fetchActiveDoc}
-                  onNavigate={setActiveDoc}
+                  onNavigate={(docId) => navigateToDoc(docId, { syncSidebarSection: true })}
                   previousDoc={
                     previousDocId
                       ? {
