@@ -97,6 +97,12 @@ const RunDetails: React.FC = () => {
     return undefined;
   };
 
+  const formatScore = (score?: number | null) => {
+    if (score === null || score === undefined) return "-";
+    if (!Number.isFinite(score)) return "-";
+    return Number.isInteger(score) ? String(score) : score.toFixed(2);
+  };
+
   const handleFilterChange = (filterType: "metric" | "status", value: string) => {
     setActiveFilters((prev) => {
       if (!value) {
@@ -467,7 +473,7 @@ const RunDetails: React.FC = () => {
                               )}
                               <td>{d.testcase_name}</td>
                               <td>{d.metric_name}</td>
-                              <td>{d.score ?? "-"}</td>
+                              <td>{formatScore(d.score)}</td>
                               <td>
                                 <span className={`${styles.statusCell} ${statusClass}`}>
                                   {normalizedStatus}
