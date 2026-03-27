@@ -5,7 +5,7 @@ import { API_BASE_URL, API_ENDPOINTS,WS_BASE_URL } from "../../config/api";
 
 import CustomSelect from './CustomSelect/CustomSelect';
 import Loop from './Loop/Loop';
-import { useNavigate } from 'react-router-dom';
+import { getAuthHeaders, redirectToLogin } from "../../utils/auth";
 
 interface RunFormData {
   runName?: string;   // 👈 add this
@@ -33,7 +33,6 @@ interface AllFiltersResponse {
 }
 
 const NewTestRunPage: React.FC = () => {
-  const navigate = useNavigate();
   // Sample data for dropdowns
   // const targets = ['Vaidya AI', 'Target 2', 'Target 3'];
   const testPlans = ['Plan 1', 'Plan 2', 'Plan 3'];
@@ -48,26 +47,6 @@ const NewTestRunPage: React.FC = () => {
   const [filters, setFilters] = useState<AllFiltersResponse | null>(null);
   const [planMetrics, setPlanMetrics] = useState<string[]>([]);
 
-  const getAuthHeaders = (): HeadersInit => {
-    const token = localStorage.getItem("access_token");
-    return token
-      ? {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        }
-      : {
-          "Content-Type": "application/json",
-        };
-  };
-
-  const redirectToLogin = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user_name");
-    localStorage.removeItem("role");
-    navigate("/login");
-  };
-  
   const [formData, setFormData] = useState<RunFormData>({
     runName: "",   
     target: "",
@@ -145,7 +124,7 @@ const NewTestRunPage: React.FC = () => {
     };
 
     fetchFilters();
-  }, [navigate]);
+  }, []);
 
   const fetchMetricsByPlan = async (planName: string) => {
     try {

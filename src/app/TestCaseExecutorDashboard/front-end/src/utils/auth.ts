@@ -19,7 +19,12 @@ export const clearSession = (): void => {
   localStorage.removeItem("role");
 };
 
-export const redirectToLogin = (): void => {
+export const getLoginUrl = (returnUrl?: string): string => {
+  const target = returnUrl || window.location.href;
+  return `${AUTH_PAGE_URL}`;
+};
+
+export const redirectToLogin = (returnUrl?: string): void => {
   clearSession();
-  window.location.replace(AUTH_PAGE_URL);
+  window.location.replace(getLoginUrl(returnUrl));
 };

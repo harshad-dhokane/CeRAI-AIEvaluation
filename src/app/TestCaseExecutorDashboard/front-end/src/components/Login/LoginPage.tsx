@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { AUTH_PAGE_URL } from "../../config/api";
+import { getLoginUrl } from "../../utils/auth";
 
 interface LoginPageProps {
   onLoginSuccess?: () => void;
@@ -7,8 +7,10 @@ interface LoginPageProps {
 
 const LoginPage: React.FC<LoginPageProps> = () => {
   useEffect(() => {
-    const returnUrl = `${window.location.origin}/`;
-    window.location.href = `${AUTH_PAGE_URL}`;
+    const returnUrl = window.location.search
+      ? `${window.location.origin}/${window.location.search}`
+      : `${window.location.origin}/`;
+    window.location.href = getLoginUrl(returnUrl);
   }, []);
 
   return (

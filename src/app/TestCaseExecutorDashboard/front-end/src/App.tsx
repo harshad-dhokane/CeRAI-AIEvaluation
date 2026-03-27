@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 
 import "./App.css";
@@ -10,6 +10,7 @@ import DevConfigPage from "./components/DevConfig/DevConfig";
 import ContinueRunPage from "./components/continue-test-run/ContinueTestRunPage";
 import Sidebar from "./components/common/sidebar/sidebar";
 import Analysis from "./components/Analysis/Analysis";
+import { redirectToLogin } from "./utils/auth";
 
 
 function App() {
@@ -29,7 +30,11 @@ function App() {
       }
     }
     const token = localStorage.getItem("access_token");
-    setIsAuthenticated(!!token);
+    if (!token) {
+      redirectToLogin();
+      return;
+    }
+    setIsAuthenticated(true);
     setLoading(false);
   }, []);
 
@@ -65,7 +70,7 @@ function App() {
       <Route
         path="/*"
         element={
-          isAuthenticated ? <AuthenticatedApp /> : <Navigate to="/login" replace />
+          isAuthenticated ? <AuthenticatedApp /> : <LoginPage />
         }
       />
     </Routes>

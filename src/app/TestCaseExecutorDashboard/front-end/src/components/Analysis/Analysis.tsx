@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { API_ENDPOINTS, WS_BASE_URL } from "../../config/api";
+import { getAuthHeaders, redirectToLogin } from "../../utils/auth";
 import styles from "./Analysis.module.css";
 
 interface RunDetail {
@@ -290,7 +291,14 @@ const Analysis: React.FC = () => {
   // ── Fetch details, but reset all statuses to PENDING if analysis is starting
   const fetchDetails = useCallback(
     async (targetRunName: string, silent = false, resetStatuses = false) => {
-      const res = await fetch(API_ENDPOINTS.GET_TEST_RUN_DETAILS(targetRunName, ""));
+      const res = await fetch(API_ENDPOINTS.GET_TEST_RUN_DETAILS(targetRunName, ""), {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      if (res.status === 401) {
+        redirectToLogin();
+        throw new Error("Unauthorized");
+      }
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.detail || `Failed to load run details (${res.status})`);
@@ -380,7 +388,14 @@ const Analysis: React.FC = () => {
 
     const pollStatus = async () => {
       try {
-        const res = await fetch(API_ENDPOINTS.ANALYSE_RUN_STATUS(runName));
+        const res = await fetch(API_ENDPOINTS.ANALYSE_RUN_STATUS(runName), {
+          headers: getAuthHeaders(),
+          credentials: "include",
+        });
+        if (res.status === 401) {
+          redirectToLogin();
+          return;
+        }
         if (!res.ok || !isMounted) return;
         const data: AnalyseStatusResponse = await res.json();
         if (data.current !== undefined) setAnalysisCurrent(data.current);
@@ -400,7 +415,14 @@ const Analysis: React.FC = () => {
         await fetchDetails(runName, false, true);
         if (!isMounted) return;
 
-        const analyseRes = await fetch(API_ENDPOINTS.ANALYSE_RUN(runName));
+        const analyseRes = await fetch(API_ENDPOINTS.ANALYSE_RUN(runName), {
+          headers: getAuthHeaders(),
+          credentials: "include",
+        });
+        if (analyseRes.status === 401) {
+          redirectToLogin();
+          return;
+        }
         if (!analyseRes.ok) {
           const body = await analyseRes.json().catch(() => null);
           throw new Error(body?.detail || `Analysis request failed (${analyseRes.status})`);

@@ -3,6 +3,7 @@ import "./TestRunsTable.css";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL, API_ENDPOINTS, LOGIN_URL } from "../../config/api";
 import { AllFilters, FilterOption } from "../../types/Filters";
+import { getAuthHeaders, redirectToLogin } from "../../utils/auth";
 
 interface TestRun {
   run_id: number;
@@ -62,25 +63,6 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
     target: "targets",
     status: "statuses",
   };
-  const getAuthHeaders = (): HeadersInit => {
-    const token = localStorage.getItem("access_token");
-    return token
-      ? {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        }
-      : {
-          "Content-Type": "application/json",
-        };
-  };
-  const redirectToLogin = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user_name");
-    localStorage.removeItem("role");
-    navigate("/login");
-  };
-
   const headers: HeaderConfig[] = [
     { key: "run_id", label: "Run Id", filterable: false },
     { key: "run_name", label: "Run Name", filterable: false },
