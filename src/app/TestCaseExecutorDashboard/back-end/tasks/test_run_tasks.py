@@ -1,4 +1,5 @@
 import asyncio
+import json
 import threading
 from datetime import datetime
 
@@ -24,6 +25,8 @@ def is_error_response(response):
         indicator in response[0]["response"].lower() for indicator in error_indicators
     )
 
+with open(interface_manager_config, "r") as f:
+    interface_manager_config_read = json.load(f)
 
 async def step(ws_payload, delay=0.1):
     await ws_manager.send_all(ws_payload)
@@ -67,7 +70,7 @@ async def execute_testcases(
         application_type = APPLICATION_TYPE_MAP[target_obj.target_type]
 
         client = InterfaceManagerClient(
-            base_url="http://localhost:8000",
+            base_url=interface_manager_config_read["base_url"],
             application_type=application_type,
             agent_name=agent_name,
         )
