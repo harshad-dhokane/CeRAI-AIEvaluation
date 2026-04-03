@@ -270,12 +270,12 @@ const RunDetails: React.FC = () => {
           <div className={styles.summaryContent}>
             <DetailCard label="Target" value={summary.target ?? "-"} icon="bi-bullseye" />
             <DetailCard label="Domain" value={summary.domain ?? "-"} icon="bi-globe" />
-            <DetailCard
+            {/* <DetailCard
               label="Status"
               value={summary.status}
               status={statusMap(summary.status)}
               icon="bi-activity"
-            />
+            /> */}
             <DetailCard
               label="Started At"
               value={new Date(summary.start_ts).toLocaleString()}

@@ -29,34 +29,36 @@
 .summaryCard {
   background-color: white;
   border-radius: 12px;
-  padding: 16px; /* Reduced padding */
-  margin: 8px 0 8px; /* Reduced margin */
+  padding: 8px 16px 8px 16px; /* Reduced top/bottom, keep sides */
+  margin: 2px 0 2px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
   width: 280px;
-  max-width: 18vw; /* More aggressive responsive width */
+  max-width: 18vw;
   box-sizing: border-box;
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 200px); /* Match exact container height */
-  max-height: calc(100vh - 200px); /* Prevent overflow */
-  overflow: hidden; /* Prevent overflow */
+  height: calc(100vh - 200px);
+  max-height: calc(100vh - 200px);
+  overflow: hidden;
 }
 
 .summaryContent {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  gap: 4px; /* Reduced from 8px */
-  overflow-y: auto; /* Add scrolling to summary content if needed */
-  scrollbar-width: thin; /* Elegant scrollbar */
-  scrollbar-color: #e2e8f0 transparent; /* Elegant colors */
+  flex: 1;
+  min-height: 0;
+  gap: 1px; /* Minimal gap */
+  overflow-y: auto; /* Add scrollbar for 150% zoom */
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
 }
 
-/* Webkit scrollbar styling */
+/* Thin scrollbar for left sidebar */
 .summaryContent::-webkit-scrollbar {
-  width: 4px; /* Thin scrollbar */
+  width: 3px;
 }
 
 .summaryContent::-webkit-scrollbar-track {
@@ -145,8 +147,8 @@
 .detailsGrid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 4px; /* Reduced from 6px */
-  padding-top: 4px; /* Reduced from 8px */
+  gap: 1px; /* Minimal gap */
+  padding-top: 0px; /* No top padding */
   border-top: 1px solid #f1f5f9;
   width: 100%;
   box-sizing: border-box;
@@ -154,9 +156,9 @@
 
 .detailCard {
   background: white;
-  border-radius: 6px; /* Reduced from 8px */
-  padding: 4px; /* Reduced from 8px */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 2px; /* Minimal */
+  padding: 1px; /* Minimal padding */
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03);
   transition: all 0.2s ease;
   border: 1px solid #e2e8f0;
   min-width: 0;
@@ -168,31 +170,31 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 40px; /* Reduced from 50px */
+  min-height: 24px; /* Much smaller */
 }
 
 .detailLabel {
-  font-size: clamp(7px, 0.9vw, 9px); /* Even smaller responsive font */
+  font-size: clamp(3px, 0.4vw, 5px); /* Tiny for 150% zoom */
   color: #64748b;
   display: flex;
   align-items: center;
-  gap: 2px; /* Reduced from 4px */
+  gap: 0px; /* No gap */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
   text-transform: uppercase;
-  letter-spacing: 0.2px; /* Reduced from 0.3px */
+  letter-spacing: 0px;
+  line-height: 0.8;
 }
 
 .detailValue {
-  font-size: clamp(9px, 1.1vw, 11px); /* Smaller responsive font */
+  font-size: clamp(5px, 0.6vw, 7px); /* Tiny for 150% zoom */
   font-weight: 600;
-  margin: 2px 0 0; /* Reduced from 6px */
+  margin: 0px 0 0; /* No margin */
   color: #1e293b;
-  margin-top: 1px; /* Reduced from 2px */
   word-break: break-word;
-  line-height: 1.1; /* Reduced from 1.2 */
+  line-height: 0.8; /* Tighter */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -339,7 +341,8 @@
   justify-content: center;
   width: 100%;
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 1px; /* Reduce gap */
+  flex-shrink: 0;
 }
 
 .tableContainer {
@@ -455,7 +458,7 @@
 .tableLayout {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 8px;
+  padding: 2px 8px 2px 8px; /* Match left card margin */
   display: flex;
   flex-direction: column;
   height: calc(100vh - 200px); /* Match exact container height */
@@ -480,7 +483,7 @@
   text-align: left;
   padding: 16px 8px;
   border-bottom: 1px solid #e2e8f0;
-  font-size: clamp(11px, 1vw, 13px); /* Smaller responsive font */
+  font-size: clamp(9px, 0.9vw, 11px); /* Smaller responsive */
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
@@ -496,7 +499,7 @@
   padding: 6px 8px;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
-  font-size: clamp(11px, 1vw, 13px); /* Smaller responsive font */
+  font-size: clamp(9px, 0.9vw, 11px); /* Smaller responsive */
   color: #334155;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
   max-width: 150px;
@@ -557,7 +560,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(9px, 0.9vw, 11px); /* Smaller responsive font */
+  font-size: clamp(8px, 0.8vw, 10px); /* Smaller responsive */
   min-width: 75px;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
 }

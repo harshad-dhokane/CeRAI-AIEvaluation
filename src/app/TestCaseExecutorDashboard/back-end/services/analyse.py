@@ -234,7 +234,7 @@ async def run_analyse_background_service(run_name: str, db):
                 score = float(raw_score) if raw_score is not None else None
                 if not reason or str(reason).strip() == "":
                     raise ValueError(
-                        f"NO_AGENT_RESPONSE: Evaluation produced no reason for testcase '{testcase_name}' (detail ID: {detail_id}). The model likely did not respond."
+                        f"No evaluation reason"
                     )
                 # Persist evaluation to conversation (best effort)
                 conversation.evaluation_score = raw_score
@@ -250,7 +250,8 @@ async def run_analyse_background_service(run_name: str, db):
                     if conversation is None and conversation_id:
                         conversation = db.get_conversation_by_id(conversation_id)
                     if conversation is not None:
-                        conversation.evaluation_score = None
+                        # Set score to 0 when there's an error
+                        conversation.evaluation_score = 0.0
                         conversation.evaluation_reason = error
                         conversation.evaluation_ts = datetime.now().isoformat()
                         db.add_or_update_conversation(conversation=conversation, override=True)
