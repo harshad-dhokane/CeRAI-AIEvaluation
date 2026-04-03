@@ -116,12 +116,14 @@ async def execute_testcases(
                     testcase_name=testcase.name,
                 )
                 rundetail_id = db.add_or_update_testrun_detail(rundetail)
-                run_status = db.get_status_by_run_detail_id(run_detail_id=rundetail_id)
-                if run_status is not None and run_status == "COMPLETED":
-                    print(
-                        f"Run detail for testcase {testcase.name} (ID: {testcase.testcase_id}) is already completed. Skipping execution."
-                    )
-                    continue
+                # For continue runs, always rerun test cases regardless of previous status
+                # Commented out the status check to force rerun
+                # run_status = db.get_status_by_run_detail_id(run_detail_id=rundetail_id)
+                # if run_status is not None and run_status == "COMPLETED":
+                #     print(
+                #         f"Run detail for testcase {testcase.name} (ID: {testcase.testcase_id}) is already completed. Skipping execution."
+                #     )
+                #     continue
 
                 message_to_agent = testcase.prompt.user_prompt or ""
                 if testcase.prompt.system_prompt:
