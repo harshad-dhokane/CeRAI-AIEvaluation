@@ -343,7 +343,15 @@ const ContinueRunPage: React.FC = () => {
                         onChange={(val: string) => handleChange("testPlan", val)}
                       />
                     </div>
-
+                      <div className="filter-item">
+                      <label>Metric</label>
+                      <CustomSelect
+                        options={planMetrics}
+                        defaultText={formData.testPlan ? "All Metrics" : "Select Test Plan first"}
+                        disabled={!formData.testPlan}
+                        onChange={(val) => handleChange("metric", val)}
+                      />
+                    </div>
                     <div className="filter-item">
                       <label>Test Case Name</label>
                       <input
@@ -357,15 +365,7 @@ const ContinueRunPage: React.FC = () => {
                       />
                     </div>
 
-                    <div className="filter-item">
-                      <label>Metric</label>
-                      <CustomSelect
-                        options={planMetrics}
-                        defaultText={formData.testPlan ? "All Metrics" : "Select Test Plan first"}
-                        disabled={!formData.testPlan}
-                        onChange={(val) => handleChange("metric", val)}
-                      />
-                    </div>
+                    
                   </div>
 
                   <div className="filters-row">
