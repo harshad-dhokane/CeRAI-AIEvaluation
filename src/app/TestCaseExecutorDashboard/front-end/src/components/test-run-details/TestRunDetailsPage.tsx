@@ -464,7 +464,10 @@ const RunDetails: React.FC = () => {
                               {index === 0 && (
                                 <td
                                   rowSpan={planDetails.length}
+                                  data-plan-cell="true"
                                   className={`${styles.planCell} align-middle text-center`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => e.stopPropagation()}
                                 >
                                   {planName}
                                 </td>

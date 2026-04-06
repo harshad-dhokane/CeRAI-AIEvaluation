@@ -1,4 +1,4 @@
-import { Home, Users, LogOut } from "lucide-react";
+import { Home, Users, LogOut, DatabaseIcon, User } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import ceraiLogo from "../../../assets/logo/cerai-logo.png";
@@ -123,7 +123,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Home", path: "/" },
-    { icon: Home, label: "Test Data", path: "", externalUrl: testDataUrl },
+    { icon: DatabaseIcon, label: "Test Data", path: "", externalUrl: testDataUrl },
     { icon: Users, label: "User's List", path: "", externalUrl: userListUrl, allowedRoles: ["admin"] },
   ];
 
@@ -177,7 +177,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
       <div className="sidebar-footer">
         <div className="sidebar-user-row">
           <div className="sidebar-user-icon-wrap">
-            <Users className="sidebar-user-icon" />
+            <User className="sidebar-user-icon" />
           </div>
           <div className="sidebar-user-meta">
             <div className="sidebar-user-name">{isLoading ? "Loading..." : userInfo.user_name}</div>
