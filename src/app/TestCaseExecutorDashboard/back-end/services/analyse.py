@@ -72,6 +72,9 @@ def start_analyse_service(run_name: str, db, background_tasks: BackgroundTasks, 
                 return {"run_name": run_name, "status": "running"}
 
         run_details = db.get_all_run_details_by_run_name(run_name=run.run_name)
+        run_details = [
+            rd for rd in run_details if rd.status == "COMPLETED"
+        ]
         total_items = len(run_details) if run_details else 0
         _set_analysis_job(
             run_name,
@@ -147,6 +150,9 @@ async def run_analyse_background_service(run_name: str, db, mode: str = "rerun_a
             )
         
         run_details = db.get_all_run_details_by_run_name(run_name=run.run_name)
+        run_details = [
+            rd for rd in run_details if rd.status == "COMPLETED"
+        ]
         print("mode:", mode)
         if mode == "retry_failed":
             print("Running only failed test cases...")

@@ -61,8 +61,6 @@ interface AccordionProps {
 
 // ─── STATUS ICON ─────────────────────────────────────────────────────────────
 
-
-
 const statusIcon = (status: string) => {
   const size = 16;
 
@@ -118,7 +116,6 @@ const MetricStrategyAccordion: React.FC<AccordionProps> = ({
 
   const [openMetrics, setOpenMetrics] = useState<Record<string, boolean>>({});
 
-  // Initialise open state when groups first appear (preserve user toggles)
   useEffect(() => {
     const metricKeys = Object.keys(grouped);
     setOpenMetrics((prev) => {
@@ -130,7 +127,6 @@ const MetricStrategyAccordion: React.FC<AccordionProps> = ({
     });
   }, [grouped]);
 
-  // Auto-open the metric containing the currently running detail
   useEffect(() => {
     if (runningDetailId == null) return;
     for (const [metric, items] of Object.entries(grouped)) {
@@ -251,7 +247,7 @@ const MetricStrategyAccordion: React.FC<AccordionProps> = ({
                         Status: {tc.status}
                       </span>
                       <span style={{ minWidth: 60, fontSize: "0.88rem", color: "#0f172a" }}>
-                        Score: {typeof tc.score === "number" ? tc.score.toFixed(2) : "—"}
+                        Score: {typeof tc.score === "number" ? tc.score.toFixed(2) : "0"}
                       </span>
                       {tc.status === "FAILED" && tc.error && (
                         <span
@@ -307,9 +303,9 @@ const formatDuration = (start: string, end: string | null): string => {
 const Analysis: React.FC = () => {
   const { runName } = useParams<{ runName: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();                    // ← ADD THIS
-  const mode = searchParams.get("mode") ?? "rerun_all";       // ← ADD THIS
-  
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get("mode") ?? "rerun_all";
+
   const [loading, setLoading] = useState(true);
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -333,13 +329,15 @@ const Analysis: React.FC = () => {
     orderedDetailsRef.current = orderedDetails;
   }, [orderedDetails]);
 
-  // ── Fetch details, but reset all statuses to PENDING if analysis is starting
+  // ── Fetch details
+  // filterToProcessed: only keep items that were actually touched by analysis (have score or error)
+  // keepOnlyCompleted: only keep items with server status COMPLETED (used before analysis starts)
   const fetchDetails = useCallback(
     async (
       targetRunName: string,
       silent = false,
-      resetStatuses = false,
-      preserveLocalAnalysisState = false
+      keepOnlyCompleted = false,
+      filterToProcessed = false
     ) => {
       const res = await fetch(API_ENDPOINTS.GET_TEST_RUN_DETAILS(targetRunName, ""), {
         headers: getAuthHeaders(),
@@ -355,31 +353,22 @@ const Analysis: React.FC = () => {
       }
       const data: TestRunResponse = await res.json();
       setSummary(data.summary);
-      const serverDetails = data.details || [];
+      let serverDetails = data.details || [];
 
-      // Reset all statuses to PENDING so the UI starts clean,
-      // instead of showing stale COMPLETED from a previous run
-      if (resetStatuses) {
+      if (keepOnlyCompleted) {
+        // Before analysis: only show COMPLETED test cases, reset to PENDING
+        serverDetails = serverDetails.filter((d) => d.status === "COMPLETED");
         setDetails(serverDetails.map((d) => ({ ...d, status: "PENDING", score: null })));
-      } else if (preserveLocalAnalysisState) {
-        setDetails((prev) => {
-          const prevById = new Map(prev.map((d) => [d.detail_id, d]));
-          return serverDetails.map((d) => {
-            const prevRow = prevById.get(d.detail_id);
-            if (!prevRow) return d;
-            const keepStatus =
-              prevRow.status === "COMPLETED" || prevRow.status === "FAILED";
-            return {
-              ...d,
-              status: keepStatus ? prevRow.status : d.status,
-              error: prevRow.error ?? null,
-              score: d.score !== undefined ? d.score : prevRow.score,
-            };
-          });
-        });
+      } else if (filterToProcessed) {
+        // After analysis: only show items the backend actually processed
+        const processed = serverDetails.filter(
+          (d) => d.score !== null || d.error !== null
+        );
+        setDetails(processed.length > 0 ? processed : serverDetails);
       } else {
         setDetails(serverDetails);
       }
+
       if (!silent) setLoading(false);
     },
     []
@@ -408,7 +397,6 @@ const Analysis: React.FC = () => {
       const sortedIdxMap = new Map(sorted.map((d, i) => [d.detail_id, i]));
       const nextDetail = sorted[completedIdx + 1] ?? null;
 
-      // Track which detail is now running
       if (nextDetail) {
         setRunningDetailId(nextDetail.detail_id);
       } else {
@@ -482,8 +470,8 @@ const Analysis: React.FC = () => {
       try {
         setError(null);
 
-        // Fetch details first, resetting all statuses to PENDING
-        await fetchDetails(runName, false, true);
+        // Fetch details — only keep COMPLETED ones, reset to PENDING for fresh start
+        await fetchDetails(runName, false, true, false);
         if (!isMounted) return;
 
         const analyseRes = await fetch(API_ENDPOINTS.ANALYSE_RUN(runName, mode), {
@@ -534,8 +522,7 @@ const Analysis: React.FC = () => {
               if (sorted.length === 0) return prev;
               setRunningDetailId(sorted[0].detail_id);
               return prev.map((d, _, arr) => {
-                const firstId = [...arr].sort((a, b) => a.detail_id - b.detail_id)[0]
-                  .detail_id;
+                const firstId = [...arr].sort((a, b) => a.detail_id - b.detail_id)[0].detail_id;
                 return d.detail_id === firstId ? { ...d, status: "RUNNING" } : d;
               });
             });
@@ -552,7 +539,7 @@ const Analysis: React.FC = () => {
             setIsCompleted(true);
             setRunningDetailId(null);
             applyProgress(payload);
-            await fetchDetails(runName, true, false, true);
+            // Don't refresh - keep the current filtered view
             if (orderedDetailsRef.current.length > 0) {
               const last = orderedDetailsRef.current.length - 1;
               setCurrentStepIndex(last);
