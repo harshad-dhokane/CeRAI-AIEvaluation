@@ -1,0 +1,11 @@
+Dockerfile.*
+docker-compose.*
+.git*
+.gitignore
+LICENSE
+docs/
+.github/
+.deepeval/
+.vscode/
+chrome-data/
+*.md
