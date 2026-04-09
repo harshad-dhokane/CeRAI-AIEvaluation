@@ -12,6 +12,7 @@ interface RunDetail {
   status: string;
   score?: number | null;
   error?: string | null;
+  evaluation_reason?: string | null;  // ← add this
 }
 
 interface RunSummary {
@@ -356,6 +357,11 @@ const Analysis: React.FC = () => {
       let serverDetails = data.details || [];
 
       if (keepOnlyCompleted) {
+        if (mode === "retry_failed") {
+          serverDetails = serverDetails.filter(
+            (d) => d.status === "COMPLETED" && (d.evaluation_reason ?? "").trim() === ""
+          );
+        }
         // Before analysis: only show COMPLETED test cases, reset to PENDING
         serverDetails = serverDetails.filter((d) => d.status === "COMPLETED");
         setDetails(serverDetails.map((d) => ({ ...d, status: "PENDING", score: null })));

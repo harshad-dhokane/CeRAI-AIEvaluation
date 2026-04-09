@@ -22,6 +22,7 @@ class TestRunDetailsResponse(BaseModel):
     status: str
     detail_id: int    
     score: Optional[float] = None
+    evaluation_reason: Optional[str] = None  # ← add this
 
 class TestRunSummaryResponse(BaseModel):
     run_id: int

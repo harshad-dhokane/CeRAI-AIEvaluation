@@ -36,6 +36,7 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
   const navigate = useNavigate();
   const loginUrl = LOGIN_URL;
   const [runs, setRuns] = useState<TestRun[]>([]);
+  const [analyseModal, setAnalyseModal] = useState<{ runName: string } | null>(null);
   const [filteredRuns, setFilteredRuns] = useState<TestRun[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -422,6 +423,64 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
                         {run.status}
                       </span>
                     </td>
+                    {analyseModal && (
+  <div
+    style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 1000,
+    }}
+    onClick={() => setAnalyseModal(null)}
+  >
+    <div
+      style={{
+        background: "#fff", borderRadius: 12, padding: 28,
+        minWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+        display: "flex", flexDirection: "column", gap: 16,
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#1e293b" }}>
+        Choose Analysis Mode
+      </h3>
+      <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b" }}>
+        {analyseModal.runName}
+      </p>
+      <button
+        type="button"
+        style={{
+          padding: "10px 16px", borderRadius: 8, border: "1px solid #cbd5e1",
+          background: "#f8fafc", cursor: "pointer", fontWeight: 600,
+          fontSize: "0.95rem", textAlign: "left",
+        }}
+        onClick={() => { startAnalysis("retry_failed", analyseModal.runName); setAnalyseModal(null); }}
+      >
+        Retry Failed
+      </button>
+      <button
+        type="button"
+        style={{
+          padding: "10px 16px", borderRadius: 8, border: "1px solid #cbd5e1",
+          background: "#f8fafc", cursor: "pointer", fontWeight: 600,
+          fontSize: "0.95rem", textAlign: "left",
+        }}
+        onClick={() => { startAnalysis("rerun_all", analyseModal.runName); setAnalyseModal(null); }}
+      >
+        Rerun All
+      </button>
+      <button
+        type="button"
+        style={{
+          padding: "8px", border: "none", background: "none",
+          color: "#94a3b8", cursor: "pointer", fontSize: "0.9rem",
+        }}
+        onClick={() => setAnalyseModal(null)}
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
                     <td className="col-domain nowrap">
                       <span className="cell-ellipsis" title={run.domain}>
                         {run.domain}
@@ -445,17 +504,7 @@ const TestRunsTable: React.FC<Props> = ({ filters, onFilterChange }) => {
                           data-tooltip="Analyse"
                           onClick={() => {
   if (typeof run.average_score === "number") {
-    const choice = window.prompt(
-      "1 → Retry Failed\n2 → Rerun Whole"
-    );
-
-    if (choice === "1") {
-      startAnalysis("retry_failed", run.run_name);
-    } else if (choice === "2") {
-      startAnalysis("rerun_all", run.run_name);
-    } else {
-      return;
-    }
+    setAnalyseModal({ runName: run.run_name });
   } else {
     startAnalysis("rerun_all", run.run_name);
   }
