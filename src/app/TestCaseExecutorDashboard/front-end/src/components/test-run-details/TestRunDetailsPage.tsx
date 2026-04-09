@@ -4,7 +4,6 @@ import styles from "./TestRunDetails.module.css";
 import Modal from "./Modal";
 import RunTimeline from "./RunTimeline";
 import DetailCard from "../common/DetailCard/DetailCard";
-import AppButton from "../common/Button/AppButton";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL, API_ENDPOINTS } from "../../config/api";
 import { redirectToLogin } from "../../utils/auth";
@@ -101,6 +100,13 @@ const RunDetails: React.FC = () => {
     if (score === null || score === undefined) return "-";
     if (!Number.isFinite(score)) return "-";
     return Number.isInteger(score) ? String(score) : score.toFixed(2);
+  };
+
+  const isPlanCellEvent = (target: EventTarget | null) => {
+    if (!(target instanceof Node)) return false;
+    const element =
+      target instanceof HTMLElement ? target : target.parentElement;
+    return Boolean(element?.closest("[data-plan-cell='true']"));
   };
 
   const handleFilterChange = (filterType: "metric" | "status", value: string) => {
@@ -250,6 +256,7 @@ const RunDetails: React.FC = () => {
     acc[detail.plan_name].push(detail);
     return acc;
   }, {} as Record<string, RunDetail[]>);
+  const hasExistingScores = details.some((detail) => typeof detail.score === "number");
 
   const tableContainerHeight = cardHeight ?? undefined;
 
@@ -291,16 +298,56 @@ const RunDetails: React.FC = () => {
               value={executionDuration ?? "-"}
               icon="bi-clock"
             />
-            {/* Continue button — inside card, pinned to bottom */}
             <div className={styles.actionsRow}>
-              <AppButton
-                label="Continue"
-                variant="outline-secondary"
-                icon="bi-play-fill"
-                size="md"
-                className="new-test-run-btn"
-                onClick={() => navigate(`/continue-run/${runName}`)}
-              />
+              <div className={styles.actionsGroup}>
+                <button
+                  type="button"
+                  className={`${styles.actionIconButton} ${styles.actionContinue}`}
+                  data-tooltip="Continue"
+                  onClick={() => navigate(`/continue-run/${summary.run_name}`)}
+                  title="Continue"
+                  aria-label={`Continue ${summary.run_name}`}
+                >
+                  <i className="bi bi-arrow-clockwise"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.actionIconButton} ${styles.actionAnalyse}`}
+                  data-tooltip="Analyse"
+                  onClick={() => {
+                    if (hasExistingScores) {
+                      const confirmReanalyse = window.confirm(
+                        "This run already has a score. Do you want to reanalyse?"
+                      );
+
+                      if (!confirmReanalyse) return;
+                    }
+
+                    navigate(`/analyse/${encodeURIComponent(summary.run_name)}`);
+                  }}
+                  title="Analyse"
+                  aria-label={`Analyse ${summary.run_name}`}
+                >
+                  <i className="bi bi-bar-chart-fill"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.actionIconButton} ${styles.actionReport}`}
+                  data-tooltip="Report"
+                  onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = API_ENDPOINTS.DOWNLOAD_REPORT(summary.run_name);
+                    link.setAttribute("download", `${summary.run_name}-evaluation.xlsx`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  title="Report"
+                  aria-label={`Download report for ${summary.run_name}`}
+                >
+                  <i className="bi bi-clipboard2-check"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -447,11 +494,13 @@ const RunDetails: React.FC = () => {
                               } ${selectedDetailId === d.detail_id ? styles.selectedRow : ""}`}
                               data-bs-toggle="modal"
                               data-bs-target="#conversationModal"
-                              onClick={() => {
+                              onClick={(e) => {
+                                if (isPlanCellEvent(e.target)) return;
                                 setSelectedConversationId(Number(d.conversation_id));
                                 setSelectedDetailId(d.detail_id);
                               }}
                               onKeyDown={(e) => {
+                                if (isPlanCellEvent(e.target)) return;
                                 if (e.key === "Enter" || e.key === " ") {
                                   e.preventDefault();
                                   setSelectedConversationId(Number(d.conversation_id));
@@ -464,7 +513,10 @@ const RunDetails: React.FC = () => {
                               {index === 0 && (
                                 <td
                                   rowSpan={planDetails.length}
+                                  data-plan-cell="true"
                                   className={`${styles.planCell} align-middle text-center`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => e.stopPropagation()}
                                 >
                                   {planName}
                                 </td>
