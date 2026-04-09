@@ -50,6 +50,13 @@ args = parser.parse_args()
 
 # connecting to the database
 config = json.load(open(args.config, 'r'))
+
+# Resolve file paths relative to the project root (current working directory)
+# The config file paths are relative to the project root
+project_root = os.getcwd()
+config['files']['plans'] = os.path.join(project_root, config['files']['plans'])
+config['files']['testcases'] = os.path.join(project_root, config['files']['testcases'])
+config['files']['strategies'] = os.path.join(project_root, config['files']['strategies'])
 # db_url = "mariadb+mariadbconnector://{user}:{password}@{host}:{port}/{database}".format(
 #     user=config['db']['user'],
 #     password=config['db']['password'],

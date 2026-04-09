@@ -19,9 +19,7 @@ from api.v1.endpoints import (
     #     target,
     #     testCase,
     users,
-)
-from api.v2.endpoints import (
-    importer
+    importer,
 )
 from api.v2.endpoints import (
     domain as domain_v2,
