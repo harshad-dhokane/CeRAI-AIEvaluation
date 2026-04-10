@@ -92,6 +92,23 @@ def _extract_bearer_token(authorization: str | None) -> str | None:
     return None
 
 
+def _resolve_importer_config(importer_dir: str) -> str:
+    candidates = [
+        os.path.join(importer_dir, "config.json"),
+        os.path.abspath(os.path.join(importer_dir, "../../../config.json")),
+        os.path.abspath(os.path.join(importer_dir, "../../config.json")),
+    ]
+
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Config file not found. Checked: {', '.join(candidates)}",
+    )
+
+
 async def _stream_importer_output(stream: asyncio.StreamReader | None) -> None:
     if stream is None:
         return
@@ -221,14 +238,7 @@ async def run_importer(background_tasks: BackgroundTasks, authorization: str | N
             )
 
         importer_dir = os.path.dirname(importer_path)
-        config_path = os.path.join(importer_dir, "config.json")
-
-        if not os.path.exists(config_path):
-            await status_manager.finish()
-            raise HTTPException(
-                status_code=404,
-                detail=f"Config file not found at {config_path}",
-            )
+        config_path = _resolve_importer_config(importer_dir)
 
         workspace_root = os.path.abspath(os.path.join(importer_dir, "../../.."))
         python_executable = sys.executable
