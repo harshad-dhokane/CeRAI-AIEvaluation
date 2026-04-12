@@ -12,6 +12,7 @@ interface RunDetail {
   status: string;
   score?: number | null;
   error?: string | null;
+  evaluation_reason?: string | null;  // ← add this
 }
 
 interface RunSummary {
@@ -339,7 +340,7 @@ const Analysis: React.FC = () => {
       keepOnlyCompleted = false,
       filterToProcessed = false
     ) => {
-      const res = await fetch(API_ENDPOINTS.GET_TEST_RUN_DETAILS(targetRunName, ""), {
+      const res = await fetch(API_ENDPOINTS.ANALYSE_DETAILS(targetRunName, mode), {
         headers: getAuthHeaders(),
         credentials: "include",
       });
@@ -356,6 +357,11 @@ const Analysis: React.FC = () => {
       let serverDetails = data.details || [];
 
       if (keepOnlyCompleted) {
+        if (mode === "retry_failed") {
+          serverDetails = serverDetails.filter(
+            (d) => d.status === "COMPLETED" && (d.evaluation_reason ?? "").trim() === ""
+          );
+        }
         // Before analysis: only show COMPLETED test cases, reset to PENDING
         serverDetails = serverDetails.filter((d) => d.status === "COMPLETED");
         setDetails(serverDetails.map((d) => ({ ...d, status: "PENDING", score: null })));
@@ -371,7 +377,7 @@ const Analysis: React.FC = () => {
 
       if (!silent) setLoading(false);
     },
-    []
+    [mode]
   );
 
   // ── Apply a WS progress message ──────────────────────────────────────────
@@ -635,7 +641,9 @@ const Analysis: React.FC = () => {
     <div className={styles.page}>
       <div className={styles.header}>
         <h2>Run Analysis</h2>
-        {isAnalysing && <p>Analysis is running. Live execution loop is updating...</p>}
+        {orderedDetails.length > 0 && isAnalysing && (
+  <p>Analysis is running. Live execution loop is updating...</p>
+)}
         {isCompleted && <p className={styles.success}>Completed successfully.</p>}
       </div>
 

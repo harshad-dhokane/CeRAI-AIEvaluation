@@ -280,7 +280,8 @@ def get_test_run_service(db, run_name: str, metric: Optional[str] = None, status
                 conv = db.get_conversation_by_id(d.conversation_id)
                 if conv and conv.evaluation_score is not None:
                     score = float(conv.evaluation_score)
-
+                if conv:
+                    evaluation_reason = conv.evaluation_reason or ""  # ← add this
             details_response.append(
                 TestRunDetailsResponse(
                     run_name=d.run_name,
@@ -290,7 +291,8 @@ def get_test_run_service(db, run_name: str, metric: Optional[str] = None, status
                     conversation_id=d.conversation_id,
                     status=d.status,
                     detail_id=d.detail_id,
-                    score=score
+                    score=score,
+                    evaluation_reason=evaluation_reason  
                 )
             )
 
