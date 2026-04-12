@@ -33,7 +33,7 @@
         "agent_name": "Vaidya AI"
     },
     "interface_manager": {
-        "docker": false,
+        "docker": true,
         "base_url": "http://interface-manager:8000",
         "base_url_local": "http://localhost:8000"
     },
