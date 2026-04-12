@@ -27,7 +27,7 @@ port_config = config.get("port", {})
 BACKEND_PORT = int(port_config.get("back-end"))
 
 if engine_type == "sqlite":
-    db_file = db_cfg.get("file", "TDMS.db")
+    db_file = db_cfg.get("file", "AIEvaluationData.db")
 
     # data folder under project root
     db_folder = os.path.join(project_root, "data")
