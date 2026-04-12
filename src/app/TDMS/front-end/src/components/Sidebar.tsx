@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import ceraiLogo from "@/assets/cerai-logo.png";
 import { API_ENDPOINTS } from "@/config/api";
 import { useToast } from "@/hooks/use-toast";
-import { clearStoredTokens } from "@/utils/auth";
+import { clearStoredTokens, getValidAccessToken } from "@/utils/auth";
 import { hasPermission } from "@/utils/permissions";
 
 interface UserInfo {
@@ -48,7 +48,7 @@ const Sidebar = () => {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const token = localStorage.getItem("access_token");
+        const token = await getValidAccessToken(API_ENDPOINTS.REFRESH);
         if (!token) {
           redirectToLogin();
           return;
@@ -75,15 +75,17 @@ const Sidebar = () => {
         } else {
           // Use fallback values from localStorage if API fails
           const storedUsername = localStorage.getItem("user_name");
-          if (storedUsername) {
-            setUserInfo({ user_name: storedUsername, email: "", role: "User" });
+          const storedRole = localStorage.getItem("role");
+          if (storedUsername && storedRole) {
+            setUserInfo({ user_name: storedUsername, email: "", role: storedRole });
           }
         }
       } catch (error) {
         // Use fallback values from localStorage if API fails
         const storedUsername = localStorage.getItem("user_name");
-        if (storedUsername) {
-          setUserInfo({ user_name: storedUsername, email: "", role: "User" });
+        const storedRole = localStorage.getItem("role");
+        if (storedUsername && storedRole) {
+          setUserInfo({ user_name: storedUsername, email: "", role: storedRole });
         }
       } finally {
         setIsLoading(false);

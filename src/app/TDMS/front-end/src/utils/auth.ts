@@ -34,6 +34,31 @@ export const clearStoredTokens = () => {
 
 export const isAuthenticated = () => !!localStorage.getItem(AUTH_KEYS.ACCESS_TOKEN);
 
+const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
+  const [, payload] = token.split(".");
+  if (!payload) return null;
+
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), "=");
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+};
+
+const isTokenExpired = (token: string, skewSeconds = 30): boolean => {
+  const payload = decodeJwtPayload(token);
+  const exp = typeof payload?.exp === "number" ? payload.exp : null;
+
+  if (!exp) {
+    return true;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  return exp <= now + skewSeconds;
+};
+
 const storeTokensFromParams = (params: URLSearchParams): boolean => {
   const values = Object.fromEntries(params);
 
@@ -85,7 +110,9 @@ export const refreshAccessToken = async (refreshUrl: string): Promise<boolean> =
 
     if (response.ok) {
       const data = await response.json();
-      setStoredTokens(data);
+      if (data.access_token) {
+        localStorage.setItem(AUTH_KEYS.ACCESS_TOKEN, data.access_token);
+      }
       return true;
     }
   } catch (error) {
@@ -99,7 +126,7 @@ export const getValidAccessToken = async (refreshUrl: string): Promise<string | 
   parseUrlTokens();
 
   const existingToken = localStorage.getItem(AUTH_KEYS.ACCESS_TOKEN);
-  if (existingToken) {
+  if (existingToken && !isTokenExpired(existingToken)) {
     return existingToken;
   }
 
