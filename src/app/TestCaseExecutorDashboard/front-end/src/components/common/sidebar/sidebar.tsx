@@ -1,9 +1,10 @@
-import { Home, Users, LogOut } from "lucide-react";
+import { Home, Users, LogOut, DatabaseIcon, User } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import ceraiLogo from "../../../assets/logo/cerai-logo.png";
-import { LOGIN_URL } from "../../../config/api";
+import { LOGIN_URL, AUTH_LOGOUT_URL } from "../../../config/api";
 import "./sidebar.css";
+
 
 interface UserInfo {
   user_name: string;
@@ -52,7 +53,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
 
   const handleLogout = async () => {
     try {
-      await fetch(authLoginUrl.replace("/web/login", "/web/logout") , {
+      await fetch(AUTH_LOGOUT_URL, {
         method: "GET",
         credentials: "include",
       });
@@ -93,8 +94,10 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
         } else {
           // Use fallback values from localStorage if API fails
           const storedUsername = localStorage.getItem("user_name");
-          if (storedUsername) {
-            setUserInfo({ user_name: storedUsername, email: "", role: "User" });
+          const storedRole = localStorage.getItem("role");
+          console.log("Stored username:", storedUsername, "Stored role:", storedRole);
+          if (storedUsername && storedRole) {
+            setUserInfo({ user_name: storedUsername, email: "", role: storedRole });
           }
         }
       } catch (error) {
@@ -106,8 +109,9 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
           return;
         }
         const storedUsername = localStorage.getItem("user_name");
-        if (storedUsername) {
-          setUserInfo({ user_name: storedUsername, email: "", role: "User" });
+        const storedRole = localStorage.getItem("role");
+        if (storedUsername && storedRole) {
+          setUserInfo({ user_name: storedUsername, email: "", role: storedRole });
         }
       } finally {
         setIsLoading(false);
@@ -119,7 +123,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Home", path: "/" },
-    { icon: Home, label: "Test Data", path: "", externalUrl: testDataUrl },
+    { icon: DatabaseIcon, label: "Test Data", path: "", externalUrl: testDataUrl },
     { icon: Users, label: "User's List", path: "", externalUrl: userListUrl, allowedRoles: ["admin"] },
   ];
 
@@ -173,7 +177,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
       <div className="sidebar-footer">
         <div className="sidebar-user-row">
           <div className="sidebar-user-icon-wrap">
-            <Users className="sidebar-user-icon" />
+            <User className="sidebar-user-icon" />
           </div>
           <div className="sidebar-user-meta">
             <div className="sidebar-user-name">{isLoading ? "Loading..." : userInfo.user_name}</div>
