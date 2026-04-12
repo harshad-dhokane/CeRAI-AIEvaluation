@@ -8,6 +8,8 @@ services:
       MARIADB_DATABASE: aievaluationtool
       MARIADB_USER: aiet_user
       MARIADB_PASSWORD: aiet_password
+    expose:
+      - 3306
     ports:
       - "3306:3306"
     volumes:
@@ -24,7 +26,7 @@ services:
     shm_size: 2gb
     ports:
       - "7900:7900" # NoVNC live browser view
-      - "4444:4444" # Selenium WebDriver endpoint
+      # - "4444:4444" # Selenium WebDriver endpoint
     environment:
       - SE_VNC_NO_PASSWORD=1
     volumes:
@@ -49,28 +51,65 @@ services:
       - ./logs:/app/logs
       - ./data:/app/data
 
-  app-cli:
+  app-backend:
     build:
       context: .
-      dockerfile: Dockerfile.app-cli
-    container_name: aiet-cli
+      dockerfile: Dockerfile.app-backend
+    container_name: aiet-backend
     depends_on:
       db:
         condition: service_healthy
       interface-manager:
         condition: service_started
+    restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
     working_dir: /app
-    volumes:
-      - ./:/app
-      - ./logs:/app/logs
-      - ./data:/app/data
-      - ./reports:/app/src/app/response_analyzer/reports
+    expose:
+      - 7000
+    ports:
+      - "7000:7000"
     env_file:
       - .env
-    tty: true
-    stdin_open: true
+    volumes:
+      - ./:/app
+
+  app-front-end:
+    build:
+      context: .
+      dockerfile: Dockerfile.app-front-end
+    container_name: aiet-front-end
+    restart: unless-stopped
+    depends_on:
+      - app-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:7000
+      - CHOKIDAR_USEPOLLING=true
+    
+  # app-cli:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.app-cli
+  #   container_name: aiet-cli
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     interface-manager:
+  #       condition: service_started
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   working_dir: /app
+  #   volumes:
+  #     - ./:/app
+  #     - ./logs:/app/logs
+  #     - ./data:/app/data
+  #     - ./reports:/app/src/app/response_analyzer/reports
+  #   env_file:
+  #     - .env
+  #   tty: true
+  #   stdin_open: true
   tdms-backend:
     build:
       context: .

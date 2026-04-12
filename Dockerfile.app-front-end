@@ -1,0 +1,12 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+COPY src/app/TestCaseExecutorDashboard/front-end/package*.json /app/
+RUN npm ci
+
+COPY src/app/TestCaseExecutorDashboard/front-end/ /app/
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
