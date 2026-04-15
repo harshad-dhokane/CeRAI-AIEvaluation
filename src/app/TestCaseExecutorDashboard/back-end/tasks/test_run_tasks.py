@@ -12,7 +12,9 @@ from lib.data import Conversation, RunDetail
 from lib.interface_manager import InterfaceManagerClient
 from services.ws_manager import ws_manager
 from utils.port import watch_im_process
+from lib.utils import get_logger, get_logger_verbosity
 
+logger = get_logger(__name__)
 
 def is_error_response(response_text: str) -> bool:
     error_indicators = [
@@ -42,11 +44,11 @@ async def execute_testcases(
     testcases,
     run,
 ):
-    print(f"🚀 Background execution started for run {run_id}")
+    logger.info(f"🚀 Background execution started for run {run_id}")
 
     client = None
     try:
-        print("started")
+        
         stop_watcher = threading.Event()
         watcher_thread = threading.Thread(
             target=watch_im_process,
@@ -64,7 +66,7 @@ async def execute_testcases(
             "WebApp": "WEBAPP",
             "API": "API",
         }
-        print("target object", target_obj)
+        
         if target_obj.target_type not in APPLICATION_TYPE_MAP:
             raise ValueError(f"Unsupported target_type: {target_obj.target_type}")
 
@@ -95,7 +97,7 @@ async def execute_testcases(
             )
             client.apply_server_config()
         except Exception as e:
-            print(f"Interface manager setup failed for run {run_id}: {e}")
+            logger.error(f"Interface manager setup failed for run {run_id}: {e}")
             run.status = "FAILED"
             run.end_ts = datetime.now().isoformat()
             db.add_or_update_testrun(run=run)
@@ -109,9 +111,9 @@ async def execute_testcases(
             )
             return
 
-        print("⏳ Waiting for WhatsApp to be ready...")
+        logger.info("⏳ Waiting for WhatsApp to be ready...")
 
-        print("✅ Starting testcase loop!")
+        logger.info("✅ Starting testcase loop!")
         for index, testcase in enumerate(testcases, start=1):
             rundetail = None
             try:
@@ -141,7 +143,7 @@ async def execute_testcases(
                     testcase=testcase.name,
                 )
                 conv_id = db.add_or_update_conversation(conversation=conv)
-                print(f"A new conversation is created with ID: {conv_id}")
+                logger.info(f"A new conversation is created with ID: {conv_id}")
 
                 rundetail.status = "RUNNING"
                 db.add_or_update_testrun_detail(rundetail)
@@ -173,7 +175,7 @@ async def execute_testcases(
                 )
                 step2_duration = (datetime.now() - step2_start).total_seconds()
                 if step2_duration < 2:
-                    print(
+                    logger.error(
                         f"Step 2 completed too fast ({step2_duration:.2f}s) — marking as FAILED"
                     )
                     await step(
@@ -213,7 +215,7 @@ async def execute_testcases(
                         agent_response = ""
 
                 if is_error_response(agent_response):
-                    print("No response received from the agent for test case 1.")
+                    logger.error("No response received from the agent for test case 1.")
                     rundetail.status = "FAILED"
                     db.add_or_update_testrun_detail(rundetail)
                     continue
@@ -246,7 +248,7 @@ async def execute_testcases(
                 rundetail.status = "COMPLETED"
                 db.add_or_update_testrun_detail(rundetail)
             except Exception as e:
-                print(
+                logger.error(
                     f"Testcase execution failed for run {run_id}, testcase index {index}: {e}"
                 )
                 if rundetail is not None:
@@ -262,10 +264,10 @@ async def execute_testcases(
         await ws_manager.send_all(
             {"type": "RUN_FINISHED", "runId": run_id, "status": "COMPLETED"}
         )
-        print(f"🏁 Background execution finished for run {run_id}")
+        logger.info(f"🏁 Background execution finished for run {run_id}")
 
     except Exception as e:
-        print(f"Background execution failed for run {run_id}: {e}")
+        logger.error(f"Background execution failed for run {run_id}: {e}")
         run.status = "FAILED"
         run.end_ts = datetime.now().isoformat()
         db.add_or_update_testrun(run=run)
@@ -279,10 +281,10 @@ async def execute_testcases(
                 }
             )
         except Exception as ws_error:
-            print(f"Failed to push RUN_FINISHED for failed run {run_id}: {ws_error}")
+            logger.error(f"Failed to push RUN_FINISHED for failed run {run_id}: {ws_error}")
     finally:
         if client is not None:
             try:
                 client.close()
             except Exception as close_error:
-                print(f"Client close failed (IM already dead): {close_error}")
+                logger.error(f"Client close failed (IM already dead): {close_error}")
