@@ -14,12 +14,24 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TCE_APP_URL = os.getenv("TCE_APP_URL", "http://localhost:3000")
-TDMS_APP_URL = os.getenv("TDMS_APP_URL", "http://localhost:8080/dashboard")
+AUTH_BASE_PATH = os.getenv("AUTH_BASE_PATH", "/auth").strip()
+if AUTH_BASE_PATH in {"", "/"}:
+    AUTH_BASE_PATH = ""
+elif not AUTH_BASE_PATH.startswith("/"):
+    AUTH_BASE_PATH = f"/{AUTH_BASE_PATH}"
+
+
+def with_auth_base(path: str) -> str:
+    return f"{AUTH_BASE_PATH}{path}" if AUTH_BASE_PATH else path
+
+
+DEFAULT_PORTAL_URL = os.getenv("AUTH_DEFAULT_PORTAL_URL", with_auth_base("/web/portal"))
+TCE_APP_URL = os.getenv("TCE_APP_URL", "/")
+TDMS_APP_URL = os.getenv("TDMS_APP_URL", "/tdms/dashboard")
 
 
 def resolve_redirect_url(role: str | None, requested_return_url: str | None) -> str:
-    if requested_return_url and requested_return_url != "http://localhost:7500/web/portal":
+    if requested_return_url and requested_return_url != DEFAULT_PORTAL_URL:
         return requested_return_url
 
     normalized_role = (role or "").strip().lower()
@@ -42,6 +54,7 @@ app = FastAPI(
     description="Central Authentication Service for AI Evaluation Tool",
     version="1.0.0",
     lifespan=lifespan,
+    root_path=AUTH_BASE_PATH or ""
 )
 
 tdms_assets_dir = os.path.abspath(
@@ -108,7 +121,7 @@ async def logout(token_data: LogoutRequest, response: Response):
 @app.get("/web/login", response_class=HTMLResponse)
 async def web_login(
     request: Request,
-    return_url: str = "http://localhost:7500/web/portal",
+    return_url: str = DEFAULT_PORTAL_URL,
     db: Session = Depends(get_db),
 ):
     refresh_token_cookie = request.cookies.get("refresh_token")
@@ -132,9 +145,9 @@ async def web_login(
         except Exception:
             pass
 
-    cerai_logo_url = "/web-assets/cerai-logo.png"
-    iit_logo_url = "/web-assets/iit-logo.png"
-    background_url = "/web-assets/iit-background.jpeg"
+    cerai_logo_url = with_auth_base("/web-assets/cerai-logo.png")
+    iit_logo_url = with_auth_base("/web-assets/iit-logo.png")
+    background_url = with_auth_base("/web-assets/iit-background.jpeg")
 
     html = f"""
     <!DOCTYPE html>
@@ -321,7 +334,8 @@ async def web_login(
     <script>
       const q = new URLSearchParams(window.location.search);
       const returnUrl = q.get('return_url') || {return_url!r};
-      const defaultPortalUrl = 'http://localhost:7500/web/portal';
+      const defaultPortalUrl = {DEFAULT_PORTAL_URL!r};
+      const authBasePath = {AUTH_BASE_PATH!r};
       const tceAppUrl = {TCE_APP_URL!r};
       const tdmsAppUrl = {TDMS_APP_URL!r};
       const resolveRedirectUrl = (role, requestedReturnUrl) => {{
@@ -348,7 +362,7 @@ async def web_login(
         e.preventDefault();
         const user_name = document.getElementById('user_name').value;
         const password = document.getElementById('password').value;
-        const res = await fetch('/login', {{
+        const res = await fetch(`${{authBasePath}}/login`, {{
           method:'POST',
           headers:{{'Content-Type':'application/json'}},
           body: JSON.stringify({{ user_name, password }})
@@ -421,7 +435,7 @@ async def web_portal():
 @app.get("/web/logout")
 async def web_logout(
     request: Request,
-    return_url: str = "http://localhost:8000",
+    return_url: str = "/",
     db: Session = Depends(get_db),
 ):
     refresh_token_cookie = request.cookies.get("refresh_token")
