@@ -331,16 +331,15 @@ def login_app(driver: webdriver.Chrome, app_name: str) -> bool:
         print(app_name.lower())
 
         if app_name.lower() == "whatsapp" or app_name.lower() == "whatsapp web" or app_name.lower() == "whatsapp_web":
-            wait_for_login = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, qr_cfg))
-            )
-            print(wait_for_login)
-            if wait_for_login:
-                time.sleep(60)  # wait for QR code to load
-                logger.info("Waiting for WhatsApp Web login via QR code.")
+            try:
+                wait_for_login = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, qr_cfg))
+                )
+                logger.info(f"{app_name.upper()} requires QR code login. Please scan the QR code with your mobile app.")
+                time.sleep(60)
                 return True
-            else:
-                logger.info(f"{app_name} has no LoginPage config → skipping login")
+            except TimeoutException:
+                logger.error(f"QR code element not found for {app_name}")
                 return True
 
         if not login_cfg:

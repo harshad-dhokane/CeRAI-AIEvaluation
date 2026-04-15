@@ -14,16 +14,15 @@ from services.ws_manager import ws_manager
 from utils.port import watch_im_process
 
 
-def is_error_response(response):
+def is_error_response(response_text: str) -> bool:
     error_indicators = [
         "chat not found",
         "[error: max retries exceeded]",
         "[error: connection refused]",
         "no response received",
     ]
-    return len(response) == 0 or any(
-        indicator in response[0]["response"].lower() for indicator in error_indicators
-    )
+    text = (response_text or "").lower()
+    return (not text.strip()) or any(ind in text for ind in error_indicators)
 
 with open(config_path, "r") as f:
     config_read = json.load(f)
@@ -198,7 +197,20 @@ async def execute_testcases(
                         "status": "DONE",
                     }
                 )
-                agent_response = response_from_agent.json().get("response", "")
+                
+                data = response_from_agent.json().get("response")
+                agent_response = ""
+
+                if isinstance(data, list) and data:
+                    data = data[0].get("response", {})
+
+                if isinstance(data, dict):
+                    if data.get("type") == "text":
+                        agent_response = data.get("content", "")
+                    elif data.get("type") == "audio":
+                        agent_response = data.get("file", "")
+                    else:
+                        agent_response = ""
 
                 if is_error_response(agent_response):
                     print("No response received from the agent for test case 1.")
@@ -207,7 +219,7 @@ async def execute_testcases(
                     continue
 
                 conv.response_ts = datetime.now().isoformat()
-                conv.agent_response = agent_response[0]["response"]
+                conv.agent_response = agent_response
                 db.add_or_update_conversation(conversation=conv)
 
                 await step(

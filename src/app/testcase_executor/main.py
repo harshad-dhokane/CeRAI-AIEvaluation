@@ -454,7 +454,20 @@ def main():
                         db.add_or_update_conversation(conversation=conv)
 
                         response_from_agent = client.chat(chat_id = testcase.testcase_id, prompt_list=[message_to_agent])
-                        agent_response = response_from_agent.json().get("response", "")
+                        data = response_from_agent.json().get("response")
+                        agent_response = ""
+
+                        if isinstance(data, list) and data:
+                            data = data[0].get("response", {})
+
+                        if isinstance(data, dict):
+                            if data.get("type") == "text":
+                                agent_response = data.get("content", "")
+                            elif data.get("type") == "audio":
+                                agent_response = data.get("file", "")
+                            else:
+                                agent_response = ""
+
 
                         # Check if the response is empty or indicates a chat not found
                         # Here, we will leave the Conversation entry dangling in the DB to indicate the the conversation was not successful.
@@ -568,7 +581,20 @@ def main():
                         db.add_or_update_conversation(conversation=conv)
 
                         response_from_agent = client.chat(chat_id = testcase.testcase_id, prompt_list=[message_to_agent])
-                        agent_response = response_from_agent.json().get("response", "")
+                        data = response_from_agent.json().get("response")
+                        agent_response = ""
+
+                        if isinstance(data, list) and data:
+                            data = data[0].get("response", {})
+
+                        if isinstance(data, dict):
+                            if data.get("type") == "text":
+                                agent_response = data.get("content", "")
+                            elif data.get("type") == "audio":
+                                agent_response = data.get("file", "")
+                            else:
+                                agent_response = ""
+
 
                         # Check if the response is empty or indicates a chat not found
                         # Here, we will leave the Conversation entry dangling in the DB to indicate the the conversation was not successful.
@@ -665,7 +691,20 @@ def main():
 
                         # send the prompt to the agent via the interface manager client
                         response_from_agent = client.chat(chat_id = testcase.testcase_id, prompt_list=[message_to_agent])
-                        agent_response = response_from_agent.json().get("response", "")
+                        data = response_from_agent.json().get("response")
+                        agent_response = ""
+
+                        if isinstance(data, list) and data:
+                            data = data[0].get("response", {})
+
+                        if isinstance(data, dict):
+                            if data.get("type") == "text":
+                                agent_response = data.get("content", "")
+                            elif data.get("type") == "audio":
+                                agent_response = data.get("file", "")
+                            else:
+                                agent_response = ""
+
 
                         # Check if the response is empty or indicates a chat not found
                         # Here, we will leave the Conversation entry dangling in the DB to indicate the the conversation was not successful.
