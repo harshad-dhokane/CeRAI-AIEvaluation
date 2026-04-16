@@ -15,6 +15,19 @@ Checks:
 - verify app auth URLs (`VITE_AUTH_SERVICE_URL`, `REACT_APP_AUTH_SERVICE_URL`)
 - clear local storage tokens and sign in again
 
+## Dashboard Frontend Fails On Startup Or Shows Blank Screen
+
+Symptoms:
+
+- dashboard fails early with API URL related runtime errors
+- blank page after `npm start`
+
+Checks:
+
+- ensure `REACT_APP_API_BASE_URL` is set (mandatory in dashboard frontend config)
+- verify value points to the dashboard backend (example: `http://localhost:7000`)
+- if TDMS links or current-user calls fail, also set `REACT_APP_TDMS_API_BASE_URL=http://localhost:7250`
+
 ## TDMS Loads But Data APIs Fail
 
 Symptoms:
@@ -74,7 +87,7 @@ Symptoms:
 Checks:
 
 - verify `/report/{run_name}` responds successfully
-- check write permissions for temporary file generation
+- check write permissions for the repository `reports/` directory
 - confirm run has analysis outputs before report generation
 
 ## SQLite Locking Or Concurrency Issues

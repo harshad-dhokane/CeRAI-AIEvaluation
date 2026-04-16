@@ -72,6 +72,7 @@ Install Python dependencies:
 pip install -r requirements.txt
 pip install -r src/app/TDMS/back-end/requirements.txt
 pip install -r src/app/auth_service/requirements.txt
+pip install -r src/app/interface_manager/requirements.txt
 ```
 
 Install frontend dependencies:
@@ -122,9 +123,23 @@ npm run dev
 
 6. Dashboard frontend (typically `http://localhost:3000`):
 
+`REACT_APP_API_BASE_URL` is required for the dashboard frontend.
+
 ```bash
 cd src/app/TestCaseExecutorDashboard/front-end
-REACT_APP_API_BASE_URL=http://localhost:7000 npm start
+REACT_APP_API_BASE_URL=http://localhost:7000 \
+REACT_APP_TDMS_API_BASE_URL=http://localhost:7250 \
+REACT_APP_AUTH_SERVICE_URL=http://localhost:7500 \
+npm start
+```
+
+Optional TDMS frontend environment overrides:
+
+```bash
+# defaults are already set in code if omitted
+VITE_API_BASE_URL=http://localhost:7250
+VITE_AUTH_SERVICE_URL=http://localhost:7500
+VITE_TEST_RUNS_HOME_URL=http://localhost:3000/
 ```
 
 ## Access URLs

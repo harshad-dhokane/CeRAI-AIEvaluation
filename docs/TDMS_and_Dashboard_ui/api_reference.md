@@ -39,6 +39,12 @@ Special utility endpoints:
 - `/prompts/system-prompt`
 - `/testplans/metrics/all`
 
+Common TDMS v1 endpoints still used by UI:
+
+- `GET /api/dashboard`
+- `GET /api/users/me`
+- `GET /api/users`
+
 ## Dashboard API Endpoints
 
 Common endpoints on dashboard backend:
@@ -52,11 +58,13 @@ Common endpoints on dashboard backend:
 - `GET /test-runs/{run_name}/timeline`
 - `GET /test-runs/{run_name}/summary`
 - `GET /test-runs/{run_name}/evaluation-summary`
-- `GET /report/{run_name}`
+- `GET /test-runs/{run_name}/evaluation-report` (Excel `.xlsx`)
+- `GET /report/{run_name}` (PDF report used by current UI actions)
 - `GET /analyse/{runName}`
 - `GET /analyse/{runName}/details`
 - `GET /analyse/{runName}/status`
 - `GET /conversations/full/{conversation_id}`
+- `GET /testcases/{testcase_name}`
 - `GET /targets/{target_name}/metadata`
 - `GET /__dev/config` (enabled when `DEV_CONFIG_ENABLED` is set)
 - `POST /__dev/config`

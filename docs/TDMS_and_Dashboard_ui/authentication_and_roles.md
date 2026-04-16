@@ -32,7 +32,12 @@ The frontend permission utility defines the following role behaviors:
 - `admin`: full user management and table management
 - `manager`: table management operations
 - `curator`: table create/update and record create/update
-- `viewer` (and backward-compatible `user`): read-oriented access and export capability
+- `viewer`: restricted read-oriented access in current UI flows
+
+Notes:
+
+- The utility includes backward compatibility checks for a legacy `user` role.
+- History visibility is explicitly disabled for `viewer` in the current permission helpers.
 
 ## Cross-App Navigation Controls
 
