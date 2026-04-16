@@ -26,6 +26,38 @@ def is_error_response(response_text: str) -> bool:
     text = (response_text or "").lower()
     return (not text.strip()) or any(ind in text for ind in error_indicators)
 
+def extract_agent_response(response_payload) -> str:
+    """
+    Normalize interface-manager payloads across channels.
+    Supported shapes:
+    - {"response": [{"response": "plain text"}]}
+    - {"response": [{"response": {"type": "text", "content": "plain text"}}]}
+    - direct string payloads
+    """
+    if isinstance(response_payload, str):
+        return response_payload.strip()
+
+    if isinstance(response_payload, dict):
+        payload_type = response_payload.get("type")
+        if payload_type == "text":
+            return (response_payload.get("content") or "").strip()
+        if payload_type == "audio":
+            return (response_payload.get("file") or "").strip()
+        # Backward-compatible fallback where text is nested under "response"
+        nested = response_payload.get("response")
+        if isinstance(nested, str):
+            return nested.strip()
+        return ""
+
+    if isinstance(response_payload, list) and response_payload:
+        first = response_payload[0]
+        if isinstance(first, dict):
+            return extract_agent_response(first.get("response"))
+        if isinstance(first, str):
+            return first.strip()
+
+    return ""
+
 with open(config_path, "r") as f:
     config_read = json.load(f)
 
@@ -201,21 +233,12 @@ async def execute_testcases(
                 )
                 
                 data = response_from_agent.json().get("response")
-                agent_response = ""
-
-                if isinstance(data, list) and data:
-                    data = data[0].get("response", {})
-
-                if isinstance(data, dict):
-                    if data.get("type") == "text":
-                        agent_response = data.get("content", "")
-                    elif data.get("type") == "audio":
-                        agent_response = data.get("file", "")
-                    else:
-                        agent_response = ""
+                agent_response = extract_agent_response(data)
 
                 if is_error_response(agent_response):
-                    logger.error("No response received from the agent for test case 1.")
+                    logger.error(
+                        f"No response received from the agent for test case {testcase.testcase_id}."
+                    )
                     rundetail.status = "FAILED"
                     db.add_or_update_testrun_detail(rundetail)
                     continue
