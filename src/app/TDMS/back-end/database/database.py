@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 # from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from config import helpers
@@ -65,10 +65,37 @@ else:
 #     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+_schema_initialized = False
+
+
+def ensure_db_ready() -> None:
+    global _schema_initialized
+
+    if _schema_initialized:
+        return
+
+    inspector = inspect(engine)
+    if not inspector.has_table(user.Users.__tablename__):
+        user.Base.metadata.create_all(bind=engine, checkfirst=True)
+
+    with SessionLocal() as db:
+        has_users = db.query(user.Users.user_id).first() is not None
+        if not has_users:
+            users = [
+                user.Users(user_name="admin", email="admin@example.com", password=helpers.hash_password("admin123"), role="admin", is_active=True),
+                user.Users(user_name="manager", email="manager@example.com", password=helpers.hash_password("manager123"), role="manager", is_active=True),
+                user.Users(user_name="curator", email="curator@example.com", password=helpers.hash_password("curator123"), role="curator", is_active=True),
+                user.Users(user_name="viewer", email="viewer@example.com", password=helpers.hash_password("viewer123"), role="viewer", is_active=True),
+            ]
+            db.add_all(users)
+            db.commit()
+
+    _schema_initialized = True
 
 
 
 def get_db():
+    ensure_db_ready()
     db = SessionLocal()
     try:
         yield db
@@ -79,8 +106,7 @@ def get_db():
 from utils.auth import get_current_user
 
 def init_db():
-    # Create all tables based on the Base metadata.
-    user.Base.metadata.create_all(bind=engine, checkfirst=True)
+    ensure_db_ready()
 
 # def init_db():
 #     # Create all tables based on the Base metadata.
@@ -89,19 +115,4 @@ def init_db():
 
 
 def seed_users():
-    # Local import to avoid circular imports at module import time
-    # from app.models.user import Users
-
-    db = SessionLocal()
-    try:
-        if not db.query(user.Users).first():
-            users = [
-                user.Users(user_name="admin", email="admin@example.com", password=helpers.hash_password("admin123"), role="admin", is_active=True),
-                user.Users(user_name="manager", email="manager@example.com", password=helpers.hash_password("manager123"), role="manager", is_active=True),
-                user.Users(user_name="curator", email="curator@example.com", password=helpers.hash_password("curator123"), role="curator", is_active=True),
-                user.Users(user_name="viewer", email="viewer@example.com", password=helpers.hash_password("viewer123"), role="viewer", is_active=True),
-            ]
-            db.add_all(users)
-            db.commit()
-    finally:
-        db.close()
+    ensure_db_ready()

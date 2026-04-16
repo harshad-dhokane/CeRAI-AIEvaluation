@@ -16,7 +16,8 @@
         "download_menu_element": ".//span[contains(@data-icon,'chevron')]",
         "download_button_element": "//div[@role='menuitem' and @aria-label='Download']",
         "attachment_button_element": "//span[contains(@data-icon='plus')]",
-        "attachment_input_element": ".//span[text()='Audio']"
+        "attachment_input_element": ".//span[text()='Audio']",
+        "scan_qr_code_element": "//canvas[@aria-label='Scan this QR code to link a device!']"
       }
     },
     "cpgrams": 

@@ -1,13 +1,24 @@
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError
 from jose import jwt, JWTError
 from config.settings import settings
-from database.database import get_db
+from database.database import get_db, ensure_db_ready
 from models.user import Users
 from typing import Optional
 
 security = HTTPBearer()
+
+
+def _load_active_user(db: Session, user_name: str) -> Optional[Users]:
+    try:
+        return db.query(Users).filter(Users.user_name == user_name).first()
+    except OperationalError as exc:
+        if "no such table" not in str(exc).lower():
+            raise
+        ensure_db_ready()
+        return db.query(Users).filter(Users.user_name == user_name).first()
 
 
 def _decode_access_token(token: str) -> dict:
@@ -51,7 +62,7 @@ def get_current_user(
             detail="Invalid token"
         )
 
-    db_user = db.query(Users).filter(Users.user_name == user_name).first()
+    db_user = _load_active_user(db, user_name)
     if not db_user or not db_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -78,7 +89,7 @@ def get_current_user_optional(
     except HTTPException:
         return None
 
-    db_user = db.query(Users).filter(Users.user_name == user_name).first()
+    db_user = _load_active_user(db, user_name)
     if not db_user or not db_user.is_active:
         return None
 
