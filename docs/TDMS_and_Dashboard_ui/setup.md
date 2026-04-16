@@ -1,6 +1,11 @@
-# Local Setup (No Docker) With NGINX
+# Local Setup (With Or Without NGINX)
 
-Use this guide to run TDMS and the Test Case Execution Tool (Dashboard) locally without Docker, with both frontend UIs served by NGINX.
+Use this guide to run TDMS and the Test Case Execution Tool (Dashboard) locally without Docker.
+
+You can choose either:
+
+- direct frontend dev servers (`without NGINX`)
+- frontend build artifacts hosted by NGINX (`with NGINX`)
 
 ## UI And Service Matrix
 
@@ -25,7 +30,7 @@ Use this guide to run TDMS and the Test Case Execution Tool (Dashboard) locally 
 - Python `3.10+`
 - Node.js `20.19+` or `22.12+`
 - npm
-- NGINX
+- NGINX (required only for NGINX mode)
 - Chrome browser (needed for interface-manager web automation scenarios)
 
 ## Step 1: Configure Root `config.json`
@@ -126,7 +131,45 @@ cd src/app/interface_manager
 python main.py
 ```
 
-## Step 4: Build Both UIs For NGINX
+## Step 4: Choose Frontend Run Mode
+
+### Option A: Run Without NGINX (Direct Dev Servers)
+
+This is best for development and frequent UI changes.
+
+1. Run TDMS frontend:
+
+```bash
+cd src/app/TDMS/front-end
+VITE_API_BASE_URL=http://localhost:7250 \
+VITE_AUTH_SERVICE_URL=http://localhost:7500 \
+VITE_TEST_RUNS_HOME_URL=http://localhost:3000/ \
+npm run dev
+```
+
+2. Run Dashboard frontend:
+
+```bash
+cd src/app/TestCaseExecutorDashboard/front-end
+REACT_APP_API_BASE_URL=http://localhost:7000 \
+REACT_APP_AUTH_SERVICE_URL=http://localhost:7500 \
+REACT_APP_TDMS_API_BASE_URL=http://localhost:7250 \
+REACT_APP_TEST_DATA_URL=http://localhost:8080/dashboard \
+REACT_APP_USER_LIST_URL=http://localhost:8080/users \
+npm start
+```
+
+Access URLs in this mode:
+
+- TDMS UI: `http://localhost:8080`
+- Dashboard UI: `http://localhost:3000`
+- Central login UI: `http://localhost:7500/web/login`
+
+### Option B: Run With NGINX (Build And Serve)
+
+Use this when you want static UI hosting and production-like frontend serving.
+
+#### Step 4.1: Build Both UIs For NGINX
 
 ### TDMS UI build
 
@@ -164,7 +207,7 @@ cd src/app/TestCaseExecutorDashboard/front-end
 npm run build
 ```
 
-## Step 5: Place Build Artifacts For NGINX
+#### Step 4.2: Place Build Artifacts For NGINX
 
 Example deployment directories:
 
@@ -179,7 +222,7 @@ sudo rsync -a --delete src/app/TDMS/front-end/dist/ /var/www/aievaluation/tdms-u
 sudo rsync -a --delete src/app/TestCaseExecutorDashboard/front-end/build/ /var/www/aievaluation/dashboard-ui/
 ```
 
-## Step 6: Configure NGINX For Both UIs
+#### Step 4.3: Configure NGINX For Both UIs
 
 Create `/etc/nginx/conf.d/aievaluation-ui.conf`:
 
@@ -228,7 +271,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## Access URLs
+Access URLs in this mode:
 
 - TDMS UI via NGINX: `http://localhost:8080`
 - Dashboard UI via NGINX: `http://localhost:3000`
@@ -236,10 +279,10 @@ sudo systemctl reload nginx
 
 ## Validation Checklist
 
-- `http://localhost:8080/healthz` returns `ok`.
-- `http://localhost:3000/healthz` returns `ok`.
+- Backend services are reachable on `7500`, `7250`, `7000`, and `8000`.
 - TDMS login redirects to auth and returns correctly.
 - Dashboard login redirects to auth and returns correctly.
 - TDMS `Home` link opens dashboard.
 - Dashboard `Test Data` link opens TDMS.
 - New run and continue run flows can load filters and start execution.
+- If using NGINX mode, `http://localhost:8080/healthz` and `http://localhost:3000/healthz` return `ok`.
