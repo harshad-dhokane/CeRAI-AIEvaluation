@@ -9,12 +9,6 @@ Frontend run options in this section:
 - `without NGINX`: direct development servers
 - `with NGINX`: static build hosting for both UIs
 
-## UI And Service Count
-
-- Frontend UIs: `2`
-- User-facing login interface (served by auth backend): `1`
-- Backend services to run locally: `4` (`auth-service`, `tdms-backend`, `dashboard-backend`, `interface-manager`)
-- Typical local processes: `6+` (4 backends + frontend processes depending on chosen mode)
 
 ## What This Section Covers
 
@@ -30,8 +24,10 @@ Frontend run options in this section:
 - [Setup](./setup.md)
 - [Architecture And Components](./architecture_and_components.md)
 - [Authentication And Roles](./authentication_and_roles.md)
-- [TDMS Module Guide](./tdms_module_guide.md)
-- [Dashboard Workflows](./dashboard_workflows.md)
+- [TDMS Dashboard Manual](./tdms_dashboard_manual.md)
+- [Test Runs Manual](./test_runs_manual.md)
+- [Run Configuration Manual](./run_configuration_manual.md)
+- [Analysis And Run Details Manual](./analysis_and_run_details_manual.md)
 - [API Reference](./api_reference.md)
 - [Troubleshooting](./troubleshooting.md)
 

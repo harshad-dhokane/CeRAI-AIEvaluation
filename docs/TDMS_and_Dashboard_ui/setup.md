@@ -1,4 +1,4 @@
-# Local Setup (With Or Without NGINX)
+# Setup (With Or Without NGINX)
 
 Use this guide to run TDMS and the Test Case Execution Tool (Dashboard) locally without Docker.
 
@@ -43,7 +43,6 @@ For local SQLite:
 {
   "db": {
     "engine": "sqlite",
-    "engine_type": "sqlite",
     "file": "AIEvaluationData.db"
   },
   "port": {
@@ -59,7 +58,6 @@ For local MariaDB:
 {
   "db": {
     "engine": "mariadb",
-    "engine_type": "mariadb",
     "host": "localhost",
     "port": 3306,
     "user": "your_username",
@@ -75,8 +73,7 @@ For local MariaDB:
 
 Important:
 
-- TDMS backend reads `db.engine`.
-- Dashboard backend reads `db.engine_type`.
+- TDMS backend and Dashboard backend reads `db.engine`.
 - Keep both keys aligned.
 
 ## Step 2: Install Dependencies
@@ -85,9 +82,6 @@ From repository root:
 
 ```bash
 pip install -r requirements.txt
-pip install -r src/app/TDMS/back-end/requirements.txt
-pip install -r src/app/auth_service/requirements.txt
-pip install -r src/app/interface_manager/requirements.txt
 ```
 
 Install UI dependencies:
