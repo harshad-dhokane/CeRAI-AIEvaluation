@@ -51,6 +51,17 @@ Internal ports are handled by nginx routing and usually do not need direct brows
 3. Open Selenium view at `http://localhost:${NGINX_PORT:-80}/selenium/` for browser-backed runs.
 4. Confirm stack health at `http://localhost:${NGINX_PORT:-80}/healthz` before long executions.
 
+## Detailed User Manual References
+
+- [TDMS + Dashboard UI Overview](../TDMS_and_Dashboard_ui/index.md)
+- [Authentication And Roles](../TDMS_and_Dashboard_ui/authentication_and_roles.md)
+- [TDMS Dashboard Manual](../TDMS_and_Dashboard_ui/tdms_dashboard_manual.md)
+- [Test Runs Manual](../TDMS_and_Dashboard_ui/test_runs_manual.md)
+- [Run Configuration Manual](../TDMS_and_Dashboard_ui/run_configuration_manual.md)
+- [Analysis And Run Details Manual](../TDMS_and_Dashboard_ui/analysis_and_run_details_manual.md)
+- [API Reference](../TDMS_and_Dashboard_ui/api_reference.md)
+- [Troubleshooting](../TDMS_and_Dashboard_ui/troubleshooting.md)
+
 ## Stop UI Stack
 
 ```bash

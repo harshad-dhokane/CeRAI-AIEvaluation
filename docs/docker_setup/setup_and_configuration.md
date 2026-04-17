@@ -136,6 +136,15 @@ docker compose ps
 - Selenium live view (via nginx): `http://localhost:${NGINX_PORT:-80}/selenium/`
 - Stack health check: `http://localhost:${NGINX_PORT:-80}/healthz`
 
+For detailed UI workflows after startup, refer to:
+
+- [TDMS + Dashboard UI Overview](../TDMS_and_Dashboard_ui/index.md)
+- [Authentication And Roles](../TDMS_and_Dashboard_ui/authentication_and_roles.md)
+- [TDMS Dashboard Manual](../TDMS_and_Dashboard_ui/tdms_dashboard_manual.md)
+- [Test Runs Manual](../TDMS_and_Dashboard_ui/test_runs_manual.md)
+- [Run Configuration Manual](../TDMS_and_Dashboard_ui/run_configuration_manual.md)
+- [Analysis And Run Details Manual](../TDMS_and_Dashboard_ui/analysis_and_run_details_manual.md)
+
 ## Section 2: Run Through CLI (Importer, Execution, Analysis, Report)
 
 Use `app-backend` as the CLI runtime container.

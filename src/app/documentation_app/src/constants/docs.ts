@@ -15,7 +15,7 @@ export interface DocSection {
 
 const GITHUB_OWNER = 'cerai-iitm';
 const GITHUB_REPO = 'AIEvaluationTool';
-const GITHUB_BRANCH = 'varun_dev';
+const GITHUB_BRANCH = 'main';
 const GITHUB_DOCS_PATH = 'docs';
 
 export type DocSectionId =
@@ -101,8 +101,17 @@ const docsConfig = {
     url: buildRawDocUrl('docker_setup/gpu_setup.md'),
     githubUrl: buildGithubDocUrl('docker_setup/gpu_setup.md'),
   },
+  'docker-setup-run-ui': {
+    title: 'Docker Run UI',
+    navTitle: 'Run UI',
+    path: 'docker_setup/docker_run_ui.md',
+    sectionId: 'docker-setup',
+    url: buildRawDocUrl('docker_setup/docker_run_ui.md'),
+    githubUrl: buildGithubDocUrl('docker_setup/docker_run_ui.md'),
+  },
   'docker-setup-run': {
-    title: 'Docker Run',
+    title: 'Docker Run CLI',
+    navTitle: 'Run CLI',
     path: 'docker_setup/docker_run.md',
     sectionId: 'docker-setup',
     url: buildRawDocUrl('docker_setup/docker_run.md'),
@@ -266,7 +275,7 @@ export const DOC_SECTIONS: DocSection[] = [
   {
     id: 'docker-setup',
     title: 'Docker Setup',
-    docIds: ['docker-setup-home', 'docker-setup-config', 'docker-setup-gpu', 'docker-setup-run'],
+    docIds: ['docker-setup-home', 'docker-setup-config', 'docker-setup-gpu', 'docker-setup-run-ui', 'docker-setup-run'],
   },
   
 

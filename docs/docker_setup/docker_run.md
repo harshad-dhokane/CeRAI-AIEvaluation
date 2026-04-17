@@ -76,6 +76,12 @@ python src/app/response_analyzer/analyze.py --config config.json --run-name <run
 python src/app/response_analyzer/report.py --config config.json --run-name <run_name> --get-report
 ```
 
+For UI-side run monitoring and result interpretation, refer to:
+
+- [Test Runs Manual](../TDMS_and_Dashboard_ui/test_runs_manual.md)
+- [Run Configuration Manual](../TDMS_and_Dashboard_ui/run_configuration_manual.md)
+- [Analysis And Run Details Manual](../TDMS_and_Dashboard_ui/analysis_and_run_details_manual.md)
+
 ## Optional: Start Sarvam Service
 
 From the host machine:
