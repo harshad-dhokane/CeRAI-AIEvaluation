@@ -193,8 +193,11 @@ python main.py
 cd src/app/interface_manager
 python main.py
 ```
+## GPU Setup
 
-## Choose Frontend Run Mode
+For GPU setup instructions, refer to [gpu_setup.md](../ai_evaluation_tool_cli/gpu_setup.md).
+
+## Run Frontend 
 
 This is best for development and frequent UI changes.
 
