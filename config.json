@@ -1,6 +1,6 @@
 {
     "db": {
-        "engine": "sqlite",
+        "engine": "mariadb",
         "host": "db",
         "port": 3306,
         "user": "aiet_user",
