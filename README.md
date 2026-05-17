@@ -1,159 +1,117 @@
-# Conversational AI Evaluation Tool - v2.0
+# CeRAI-AIEvaluation
 
-AIEvaluationTool is an end-to-end platform for evaluating conversational AI systems across API, web, and WhatsApp-style interfaces.
+This repository is the **CeRAI evaluation-tool fork** used in my Gates Foundation AI Fellowship India 2026 technical assignment.
 
-It combines:
+It is the **supporting evaluation repo**, not the chatbot itself.
 
-- **TDMS** for creating and managing prompts, test cases, plans, strategies, and targets
-- **Test Case Execution Dashboard** for running evaluations, tracking runs, and reviewing results
-- **CLI and helper scripts** for importer, local-stack bring-up, health checks, and report generation
+The **primary Option A deliverable** is the KisanSaathi application and live report:
 
-Full product documentation is available at:
+- KisanSaathi repo: `https://github.com/harshad-dhokane/kisansaathi`
+- KisanSaathi live app: `https://kisaansaathi-eval.vercel.app`
+- KisanSaathi live results report: `https://kisaansaathi-eval.vercel.app/results`
 
-- [AIEvaluationTool docs portal](https://cerai-iitm.github.io/AIEvaluationTool/)
-- [Agriculture evaluation reference](./AGRICULTURE_EVALUATION_REFERENCE.md)
+This CeRAI fork exists so another developer can:
 
-## Recommended Local Setup
+- run the CeRAI stack locally
+- inspect the evaluation tool setup used in the assignment
+- re-check the agriculture target configuration
+- understand the tool limitations we observed
+- optionally load the agriculture evaluation database snapshot and inspect the runs in CeRAI itself
 
-The supported setup path for a fresh clone is the **non-Docker local bootstrap**.
+## What CeRAI Is
 
-It is the shortest working path because it:
+CeRAI is an evaluation platform for conversational systems.
 
-- provisions a local Python runtime if required
-- creates the local virtual environment at `.conda-env`
-- provisions a local Node.js runtime if required
-- installs Python and frontend dependencies
-- creates missing `.env` files from `.env.example`
-- starts the local services
-- runs basic health checks
+It provides:
 
-## Agriculture Evaluation Reference
+- **TDMS** for managing prompts, responses, strategies, metrics, targets, testcases, judge prompts, and test plans
+- **Test Case Execution Dashboard** for creating runs, executing them, analysing conversations, and downloading reports
+- **Interface Manager** for talking to targets through API, browser-automation, or WhatsApp-style flows
+- **Auth Service** for shared login and role-based access
 
-If you want to re-check the executed agriculture evaluation against the deployed KisanSaathi target, use:
+In this assignment, CeRAI was used to evaluate **KisanSaathi**, a multilingual agriculture advisory chatbot.
 
-- [AGRICULTURE_EVALUATION_REFERENCE.md](./AGRICULTURE_EVALUATION_REFERENCE.md)
+## What This Fork Adds Or Clarifies
 
-That file documents:
+This fork was cleaned up for the assignment workflow and local reproducibility.
 
-- the deployed KisanSaathi Vercel URLs
-- the exact CeRAI target values used for remote evaluation
-- the minimum CeRAI setup required to rerun the cases
-- where the executed testcase evidence and result interpretations live
+Key points:
 
-## Quick Start From A Fresh Clone
+- bootstrap-first local setup path
+- non-Docker local bring-up documentation
+- agriculture evaluation reference document
+- clarification of sample data vs. actual agriculture evaluation data
+- support for the deployed KisanSaathi OpenAI-compatible API target
+- documentation of evaluation-tool limitations observed during the work
 
-### 1. Clone the repository
+## Repository Role In The Assignment
+
+Use this repo to understand and reproduce the **evaluation environment**.
+
+Use the KisanSaathi repo to understand and reproduce the **evaluated system** and the **final live report**.
+
+That split is intentional:
+
+- **CeRAI repo**: evaluation infrastructure and evaluator-side documentation
+- **KisanSaathi repo**: live endpoint, chatbot implementation, final findings, testcase ledger, and results page
+
+## Quick Start
+
+Clone this fork:
 
 ```bash
 git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
 cd CeRAI-AIEvaluation
 ```
 
-### 2. Run the one-command bootstrap
+Run the one-command local bootstrap:
 
 ```bash
 ./scripts/bootstrap_local_stack.sh
 ```
 
-Optional: if you also want the bundled sample TDMS/test-run data imported automatically:
+After bootstrap, the main local URLs are:
+
+- Auth login: `http://localhost:7500/web/login`
+- TDMS UI: `http://localhost:8080`
+- Test Case Execution Dashboard: `http://localhost:3000`
+
+Optional sample-data import during bootstrap:
 
 ```bash
 IMPORT_SAMPLE_DATA=1 ./scripts/bootstrap_local_stack.sh
 ```
 
-Optional: if you also want the heavier evaluator extras beyond the default local analysis/report path:
+Optional heavier evaluator extras:
 
 ```bash
 INSTALL_EVAL_DEPS=1 ./scripts/bootstrap_local_stack.sh
 ```
 
-### 3. Open the local applications
-
-- Central login: `http://localhost:7500/web/login`
-- TDMS UI: `http://localhost:8080`
-- Test Case Execution Dashboard: `http://localhost:3000`
-
-### 4. Default local credentials
-
-If sample data has been imported, the seeded accounts are:
-
-- `admin / admin123`
-- `manager / manager123`
-- `curator / curator123`
-- `viewer / viewer123`
-
-## Why The UI Can Show "No Data"
-
-A fresh bootstrap only brings the CeRAI stack up. It does **not** automatically recreate the agriculture testcase inventory, targets, runs, and evaluation history from the earlier working machine.
-
-There are two different ways to populate data:
-
-### 1. Import generic sample data
-
-This gives you demo TDMS and dashboard content:
-
-```bash
-./scripts/import_sample_data.sh
-```
-
-Or during bootstrap:
-
-```bash
-IMPORT_SAMPLE_DATA=1 ./scripts/bootstrap_local_stack.sh
-```
-
-### 2. Bring over the exact agriculture evaluation data
-
-If you want the same agriculture targets, testcases, runs, scores, and conversations that were used in the executed review, copy the SQLite database from the working CeRAI machine.
-
-Use either:
-
-```bash
-data/AIEvaluationData.db
-```
-
-or, if the archived merged snapshot is available:
-
-```bash
-data/AIEvaluationData_merged_with_agri.db
-```
-
-Replace the database file in the cloned repo with that file as `data/AIEvaluationData.db`, then restart:
-
-```bash
-./scripts/stop_local_stack.sh || true
-./scripts/start_local_stack.sh
-./scripts/check_local_stack.sh
-```
-
-This is the fastest way to make the TDMS and dashboard show the exact agriculture work that was already performed.
-
 ## What The Bootstrap Script Does
 
-`./scripts/bootstrap_local_stack.sh` is the preferred workflow for a clean local machine.
+`./scripts/bootstrap_local_stack.sh` is the supported fresh-clone setup path.
 
-It will:
+It:
 
-1. detect the local platform
-2. create missing runtime `.env` files from the checked-in `.env.example` files
-3. provision Python `3.11+` locally if the machine does not already have it
-4. create the repo-local virtual environment at `.conda-env`
-5. provision Node.js locally if the machine does not already have a suitable version
-6. install Python dependencies needed for the local SQLite stack, analysis, summary generation, and PDF report generation
-7. install frontend dependencies for both TDMS and Dashboard
-8. clear stale repo-local CeRAI processes before starting
-9. start all local services
-10. verify the URLs are reachable
+1. detects the local platform
+2. provisions Python `3.11+` locally if needed
+3. creates the repo-local virtual environment at `.conda-env`
+4. provisions Node.js locally if needed
+5. creates missing `.env` files from checked-in `.env.example` files
+6. installs Python dependencies required for the local SQLite stack
+7. installs frontend dependencies for TDMS and Dashboard
+8. clears stale repo-local CeRAI processes
+9. starts all local services
+10. runs health checks
 
-This is intended to be the **only required setup command** for a fresh clone.
-
-By default, bootstrap now installs the dependencies used by:
+By default, bootstrap includes the local workflow dependencies used for:
 
 - run analysis
 - summary message generation
 - PDF report generation
 
-That default path includes the core packages used in the executed local workflow such as:
+Examples of default packages now expected in that flow include:
 
 - `deepeval`
 - `ollama`
@@ -161,7 +119,7 @@ That default path includes the core packages used in the executed local workflow
 - `weasyprint`
 - `python-iso639`
 
-The optional `INSTALL_EVAL_DEPS=1` path is now only for heavier evaluator-family extras such as:
+`INSTALL_EVAL_DEPS=1` is only for heavier evaluator extras such as:
 
 - `transformers`
 - `torch`
@@ -174,7 +132,7 @@ The optional `INSTALL_EVAL_DEPS=1` path is now only for heavier evaluator-family
 
 ## Local Runtime Files
 
-The local helper flow expects these files:
+The local stack uses:
 
 - root `.env`
 - root `config.json`
@@ -184,7 +142,7 @@ The local helper flow expects these files:
 - `src/lib/strategy/.env`
 - `src/app/interface_manager/config.json`
 
-For a fresh clone, the helper scripts now create the missing `.env` files automatically from:
+The bootstrap flow creates the missing `.env` files automatically from:
 
 - `.env.example`
 - `src/app/TDMS/front-end/.env.example`
@@ -192,66 +150,106 @@ For a fresh clone, the helper scripts now create the missing `.env` files automa
 - `src/app/auth_service/.env.example`
 - `src/lib/strategy/.env.example`
 
-## Environment Example Notes
+## Why The UI Can Show “No Data”
 
-The bootstrap script creates the runtime `.env` files automatically from the checked-in `.env.example` files. Provider keys can remain blank unless you are actively using those paths.
+A fresh bootstrap starts the CeRAI stack, but it does **not** automatically recreate the exact agriculture work done during the assignment.
 
-## Default Local URLs
+There are two different data paths:
 
-- Auth service: `http://localhost:7500`
-- TDMS backend: `http://localhost:7250`
-- Dashboard backend: `http://localhost:7000`
-- Interface manager: `http://localhost:8000`
-- TDMS frontend: `http://localhost:8080`
-- Dashboard frontend: `http://localhost:3000`
+### 1. Generic sample data
 
-## Local Prerequisites
-
-The bootstrap script can provision some tooling automatically, but these are still the practical assumptions:
-
-- Git
-- `curl` or `wget`
-- Chrome browser for local web/WhatsApp automation scenarios
-
-Python and Node can be provisioned by the bootstrap path when they are not already available locally.
-
-## Post-Bootstrap Operations
-
-After the initial bootstrap, these helper scripts are useful for normal local use:
+This gives you demo TDMS and dashboard content:
 
 ```bash
+./scripts/import_sample_data.sh
+```
+
+or:
+
+```bash
+IMPORT_SAMPLE_DATA=1 ./scripts/bootstrap_local_stack.sh
+```
+
+### 2. Actual agriculture evaluation data
+
+If you want the exact agriculture targets, testcases, runs, conversations, scores, and evaluation history from the assignment, use the carried-over SQLite database.
+
+Use either:
+
+```bash
+data/AIEvaluationData.db
+```
+
+or the archived merged snapshot:
+
+```bash
+data/AIEvaluationData_merged_with_agri.db
+```
+
+Place the selected file into the cloned repo as:
+
+```bash
+data/AIEvaluationData.db
+```
+
+Then restart the stack:
+
+```bash
+./scripts/stop_local_stack.sh || true
 ./scripts/start_local_stack.sh
 ./scripts/check_local_stack.sh
-./scripts/stop_local_stack.sh
 ```
 
-These are **not** separate setup steps for a fresh clone. They are only for starting, checking, or stopping a stack that has already been bootstrapped once.
+Important:
 
-## Troubleshooting Bootstrap
+- `data/AIEvaluationData.db` is intentionally ignored in Git because it is the live runtime database
+- `data/AIEvaluationData_merged_with_agri.db` is the safer snapshot file for verification handoff
 
-If bootstrap fails, inspect the relevant service log under `.local/logs/`.
+## Re-checking The Agriculture Evaluation
 
-For example, if the dashboard backend does not come up:
+The main agriculture-specific rerun and target details are documented in:
 
-```bash
-tail -n 120 .local/logs/dashboard-backend.log
-```
+- [AGRICULTURE_EVALUATION_REFERENCE.md](./AGRICULTURE_EVALUATION_REFERENCE.md)
 
-The bootstrap path now includes the dashboard dependency that previously caused the `iso639` startup failure, as well as the default summary and report-generation packages used by the local evaluation workflow.
+That file tells you:
 
-Bootstrap already clears stale repo-local CeRAI services before restarting. If it still fails with a port-ownership error, that usually means a non-repo process is already using one of the required ports and must be stopped manually before rerunning bootstrap.
+- which chatbot was evaluated
+- the deployed KisanSaathi URLs
+- the exact CeRAI target values used for remote evaluation
+- how to re-check the deployed target
+- how to load the agriculture evaluation database into CeRAI
 
-## Docker
+## Deployed KisanSaathi Target Used In CeRAI
 
-Docker is still supported, but it is no longer the simplest path for a fresh local machine.
+The final remote CeRAI validation used this target:
 
-Useful references:
+- `Target Name`: `gpt-kisansaathi-vercel`
+- `Target Type`: `API`
+- `Target URL`: `https://kisaansaathi-eval.vercel.app/api/openai`
+- `Domain`: `agriculture`
 
-- [Local non-Docker setup](docs/TDMS_and_Dashboard_ui/setup.md)
-- [Docker run for UI stack](docs/docker_setup/docker_run_ui.md)
-- [Docker setup and configuration](docs/docker_setup/setup_and_configuration.md)
+The `gpt-` prefix matters because CeRAI’s remote provider path recognizes OpenAI-compatible targets through that naming pattern.
 
-## Related Local Helper Scripts
+## Docs Map
+
+Use these files in this order:
+
+1. **This README**
+   - what this repo is for
+   - how to start it
+   - how to get data into it
+
+2. [AGRICULTURE_EVALUATION_REFERENCE.md](./AGRICULTURE_EVALUATION_REFERENCE.md)
+   - exact agriculture evaluation rerun story
+   - deployed KisanSaathi target details
+
+3. [docs/TDMS_and_Dashboard_ui/setup.md](./docs/TDMS_and_Dashboard_ui/setup.md)
+   - deeper local setup and service notes
+
+4. [CODE_CHANGES.md](./CODE_CHANGES.md)
+   - what was changed in the CeRAI fork during the work
+
+## Related Scripts
 
 - `scripts/bootstrap_local_stack.sh`
 - `scripts/start_local_stack.sh`
@@ -259,10 +257,22 @@ Useful references:
 - `scripts/check_local_stack.sh`
 - `scripts/import_sample_data.sh`
 
-## Project Evolution
+## Troubleshooting
 
-![System Architecture](screenshots/Arch.jpg)
+If bootstrap fails, inspect logs under `.local/logs/`.
 
-![AI Eval Tool Evolution](screenshots/AIEvalTool.gif)
+Common example:
 
-Made with [Gource](https://gource.io/)
+```bash
+tail -n 120 .local/logs/dashboard-backend.log
+```
+
+If bootstrap still fails with a port-ownership error after clearing stale repo-local services, another non-repo process is likely already using one of the required ports and must be stopped manually.
+
+## Related Repository
+
+The evaluated chatbot and final live report are in:
+
+- `https://github.com/harshad-dhokane/kisansaathi`
+
+If you are reviewing the assignment end-to-end, read the KisanSaathi repo alongside this one.
