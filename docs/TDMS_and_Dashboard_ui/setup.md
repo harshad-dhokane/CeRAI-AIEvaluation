@@ -24,7 +24,7 @@ Optional sample-data import during bootstrap:
 IMPORT_SAMPLE_DATA=1 ./scripts/bootstrap_local_stack.sh
 ```
 
-Optional heavier evaluation/report dependencies:
+Optional heavier evaluator extras beyond the default local analysis/report path:
 
 ```bash
 INSTALL_EVAL_DEPS=1 ./scripts/bootstrap_local_stack.sh
@@ -39,6 +39,27 @@ This is the preferred local path because the bootstrap script:
 - installs frontend dependencies
 - starts the local services
 - runs health checks
+
+This is the only setup path you should need for a fresh clone.
+
+By default, bootstrap now installs the dependencies used by:
+
+- run analysis
+- summary message generation
+- PDF report generation
+
+The optional `INSTALL_EVAL_DEPS=1` path is only for heavier evaluator-family extras.
+
+In the current script, that optional path is mainly for:
+
+- `transformers`
+- `torch`
+- `sentence_transformers`
+- `evaluate`
+- `language_tool_python`
+- `gliner`
+- `rouge_score`
+- `levenshtein`
 
 ## Local UI And Service Matrix
 
@@ -64,7 +85,7 @@ Practical assumptions for a smooth local run:
 
 - Git
 - `curl` or `wget`
-- Python `3.11+` if you want to create the virtual environment manually
+- Python can be provisioned by the bootstrap path when it is not already available locally
 - Node.js `18+` if you want to avoid local Node auto-provisioning
 - Chrome browser for local web/WhatsApp automation scenarios
 
@@ -90,12 +111,6 @@ The helper scripts now create the missing `.env` files automatically from:
 
 ### Root `.env`
 
-If you are setting up manually:
-
-```bash
-cp .env.example .env
-```
-
 Default local example:
 
 ```env
@@ -111,10 +126,6 @@ OPENAI_API_KEY=""
 
 ### TDMS frontend `.env`
 
-```bash
-cp src/app/TDMS/front-end/.env.example src/app/TDMS/front-end/.env
-```
-
 ```env
 VITE_API_BASE_URL="http://localhost:7250"
 VITE_AUTH_SERVICE_URL="http://localhost:7500"
@@ -122,10 +133,6 @@ VITE_TEST_RUNS_HOME_URL="http://localhost:3000"
 ```
 
 ### Dashboard frontend `.env`
-
-```bash
-cp src/app/TestCaseExecutorDashboard/front-end/.env.example src/app/TestCaseExecutorDashboard/front-end/.env
-```
 
 ```env
 REACT_APP_API_BASE_URL="http://localhost:7000"
@@ -137,20 +144,12 @@ REACT_APP_USER_LIST_URL="http://localhost:8080/users"
 
 ### Auth service `.env`
 
-```bash
-cp src/app/auth_service/.env.example src/app/auth_service/.env
-```
-
 ```env
 TCE_APP_URL="http://localhost:3000"
 TDMS_APP_URL="http://localhost:8080/dashboard"
 ```
 
 ### Strategy `.env`
-
-```bash
-cp src/lib/strategy/.env.example src/lib/strategy/.env
-```
 
 ```env
 DATA_PATH="data/"
@@ -178,61 +177,26 @@ For the supported local SQLite path, keep root `config.json` aligned like this:
 
 This is the recommended local path because it avoids MariaDB and Docker dependencies during bring-up.
 
-## Manual Local Setup
+If the UI opens but does not show the agriculture work you created, that is a data issue rather than a stack issue. Use the generic sample import only for demo data, or replace `data/AIEvaluationData.db` with the carried-over agriculture database from the working machine. The agriculture-specific handoff details are in [`AGRICULTURE_EVALUATION_REFERENCE.md`](../../AGRICULTURE_EVALUATION_REFERENCE.md).
 
-If you do not want to use the one-command bootstrap:
+## Post-Bootstrap Operations
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
-cd CeRAI-AIEvaluation
-```
-
-### 2. Create the local virtual environment
-
-```bash
-python3.11 -m venv .conda-env
-```
-
-### 3. Create the `.env` files
-
-```bash
-cp .env.example .env
-cp src/app/TDMS/front-end/.env.example src/app/TDMS/front-end/.env
-cp src/app/TestCaseExecutorDashboard/front-end/.env.example src/app/TestCaseExecutorDashboard/front-end/.env
-cp src/app/auth_service/.env.example src/app/auth_service/.env
-cp src/lib/strategy/.env.example src/lib/strategy/.env
-```
-
-### 4. Install dependencies
-
-```bash
-./scripts/install_local_dependencies.sh
-```
-
-### 5. Start all services
+After the initial bootstrap, the normal operational scripts are:
 
 ```bash
 ./scripts/start_local_stack.sh
-```
-
-### 6. Validate the local URLs
-
-```bash
 ./scripts/check_local_stack.sh
+./scripts/stop_local_stack.sh
 ```
 
-### 7. Optional sample-data import
+They are not separate setup steps for a fresh clone.
+
+Bootstrap already clears stale repo-local CeRAI services before it starts. If you still hit a port-ownership error, another non-repo process is likely already using one of the required ports and must be stopped manually.
+
+Optional sample-data import after bootstrap:
 
 ```bash
 ./scripts/import_sample_data.sh
-```
-
-### 8. Stop the stack later
-
-```bash
-./scripts/stop_local_stack.sh
 ```
 
 ## Local URLs
@@ -258,5 +222,5 @@ cp src/lib/strategy/.env.example src/lib/strategy/.env
 ## Related Docs
 
 - [Repository README](../../README.md)
-- [Detailed local setup notes](../../LOCAL_SETUP.md)
+- [Agriculture evaluation reference](../../AGRICULTURE_EVALUATION_REFERENCE.md)
 - [GPU setup](../ai_evaluation_tool_cli/gpu_setup.md)

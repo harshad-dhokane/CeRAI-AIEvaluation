@@ -15,7 +15,7 @@ Full product documentation is available at:
 
 ## Recommended Local Setup
 
-The recommended path for a fresh clone is the **non-Docker local bootstrap**.
+The supported setup path for a fresh clone is the **non-Docker local bootstrap**.
 
 It is the shortest working path because it:
 
@@ -61,7 +61,7 @@ Optional: if you also want the bundled sample TDMS/test-run data imported automa
 IMPORT_SAMPLE_DATA=1 ./scripts/bootstrap_local_stack.sh
 ```
 
-Optional: if you also want the heavier evaluation/report-generation dependencies:
+Optional: if you also want the heavier evaluator extras beyond the default local analysis/report path:
 
 ```bash
 INSTALL_EVAL_DEPS=1 ./scripts/bootstrap_local_stack.sh
@@ -82,6 +82,52 @@ If sample data has been imported, the seeded accounts are:
 - `curator / curator123`
 - `viewer / viewer123`
 
+## Why The UI Can Show "No Data"
+
+A fresh bootstrap only brings the CeRAI stack up. It does **not** automatically recreate the agriculture testcase inventory, targets, runs, and evaluation history from the earlier working machine.
+
+There are two different ways to populate data:
+
+### 1. Import generic sample data
+
+This gives you demo TDMS and dashboard content:
+
+```bash
+./scripts/import_sample_data.sh
+```
+
+Or during bootstrap:
+
+```bash
+IMPORT_SAMPLE_DATA=1 ./scripts/bootstrap_local_stack.sh
+```
+
+### 2. Bring over the exact agriculture evaluation data
+
+If you want the same agriculture targets, testcases, runs, scores, and conversations that were used in the executed review, copy the SQLite database from the working CeRAI machine.
+
+Use either:
+
+```bash
+data/AIEvaluationData.db
+```
+
+or, if the archived merged snapshot is available:
+
+```bash
+data/AIEvaluationData_merged_with_agri.db
+```
+
+Replace the database file in the cloned repo with that file as `data/AIEvaluationData.db`, then restart:
+
+```bash
+./scripts/stop_local_stack.sh || true
+./scripts/start_local_stack.sh
+./scripts/check_local_stack.sh
+```
+
+This is the fastest way to make the TDMS and dashboard show the exact agriculture work that was already performed.
+
 ## What The Bootstrap Script Does
 
 `./scripts/bootstrap_local_stack.sh` is the preferred workflow for a clean local machine.
@@ -93,10 +139,38 @@ It will:
 3. provision Python `3.11+` locally if the machine does not already have it
 4. create the repo-local virtual environment at `.conda-env`
 5. provision Node.js locally if the machine does not already have a suitable version
-6. install Python dependencies needed for the local SQLite stack and provider-backed API targets
+6. install Python dependencies needed for the local SQLite stack, analysis, summary generation, and PDF report generation
 7. install frontend dependencies for both TDMS and Dashboard
-8. start all local services
-9. verify the URLs are reachable
+8. clear stale repo-local CeRAI processes before starting
+9. start all local services
+10. verify the URLs are reachable
+
+This is intended to be the **only required setup command** for a fresh clone.
+
+By default, bootstrap now installs the dependencies used by:
+
+- run analysis
+- summary message generation
+- PDF report generation
+
+That default path includes the core packages used in the executed local workflow such as:
+
+- `deepeval`
+- `ollama`
+- `rich`
+- `weasyprint`
+- `python-iso639`
+
+The optional `INSTALL_EVAL_DEPS=1` path is now only for heavier evaluator-family extras such as:
+
+- `transformers`
+- `torch`
+- `sentence_transformers`
+- `evaluate`
+- `language_tool_python`
+- `gliner`
+- `rouge_score`
+- `levenshtein`
 
 ## Local Runtime Files
 
@@ -118,83 +192,9 @@ For a fresh clone, the helper scripts now create the missing `.env` files automa
 - `src/app/auth_service/.env.example`
 - `src/lib/strategy/.env.example`
 
-## Manual Local Setup
-
-If you do not want the one-command bootstrap, use the manual helper path below.
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
-cd CeRAI-AIEvaluation
-```
-
-### 2. Create the local Python environment manually
-
-Use Python `3.11` or newer:
-
-```bash
-python3.11 -m venv .conda-env
-```
-
-If your machine uses another compatible interpreter:
-
-```bash
-python3 -m venv .conda-env
-```
-
-### 3. Install the required local dependencies
-
-```bash
-./scripts/install_local_dependencies.sh
-```
-
-Optional heavier dependencies:
-
-```bash
-INSTALL_EVAL_DEPS=1 ./scripts/install_local_dependencies.sh
-```
-
-### 4. Start the local stack
-
-```bash
-./scripts/start_local_stack.sh
-```
-
-### 5. Verify the services
-
-```bash
-./scripts/check_local_stack.sh
-```
-
-### 6. Stop the local stack
-
-```bash
-./scripts/stop_local_stack.sh
-```
-
 ## Environment Example Notes
 
-### Root `.env`
-
-Create it with:
-
-```bash
-cp .env.example .env
-```
-
-The default example works for a local clone. Provider keys can remain blank until you actually use those paths.
-
-### Frontend and auth `.env` files
-
-For a manual setup, create them from the checked-in examples:
-
-```bash
-cp src/app/TDMS/front-end/.env.example src/app/TDMS/front-end/.env
-cp src/app/TestCaseExecutorDashboard/front-end/.env.example src/app/TestCaseExecutorDashboard/front-end/.env
-cp src/app/auth_service/.env.example src/app/auth_service/.env
-cp src/lib/strategy/.env.example src/lib/strategy/.env
-```
+The bootstrap script creates the runtime `.env` files automatically from the checked-in `.env.example` files. Provider keys can remain blank unless you are actively using those paths.
 
 ## Default Local URLs
 
@@ -211,9 +211,35 @@ The bootstrap script can provision some tooling automatically, but these are sti
 
 - Git
 - `curl` or `wget`
-- Python `3.11+` if you want to create the virtual environment manually
-- Node.js `18+` if you want to avoid local Node auto-provisioning
 - Chrome browser for local web/WhatsApp automation scenarios
+
+Python and Node can be provisioned by the bootstrap path when they are not already available locally.
+
+## Post-Bootstrap Operations
+
+After the initial bootstrap, these helper scripts are useful for normal local use:
+
+```bash
+./scripts/start_local_stack.sh
+./scripts/check_local_stack.sh
+./scripts/stop_local_stack.sh
+```
+
+These are **not** separate setup steps for a fresh clone. They are only for starting, checking, or stopping a stack that has already been bootstrapped once.
+
+## Troubleshooting Bootstrap
+
+If bootstrap fails, inspect the relevant service log under `.local/logs/`.
+
+For example, if the dashboard backend does not come up:
+
+```bash
+tail -n 120 .local/logs/dashboard-backend.log
+```
+
+The bootstrap path now includes the dashboard dependency that previously caused the `iso639` startup failure, as well as the default summary and report-generation packages used by the local evaluation workflow.
+
+Bootstrap already clears stale repo-local CeRAI services before restarting. If it still fails with a port-ownership error, that usually means a non-repo process is already using one of the required ports and must be stopped manually before rerunning bootstrap.
 
 ## Docker
 
@@ -222,14 +248,12 @@ Docker is still supported, but it is no longer the simplest path for a fresh loc
 Useful references:
 
 - [Local non-Docker setup](docs/TDMS_and_Dashboard_ui/setup.md)
-- [Local setup notes](./LOCAL_SETUP.md)
 - [Docker run for UI stack](docs/docker_setup/docker_run_ui.md)
 - [Docker setup and configuration](docs/docker_setup/setup_and_configuration.md)
 
 ## Related Local Helper Scripts
 
 - `scripts/bootstrap_local_stack.sh`
-- `scripts/install_local_dependencies.sh`
 - `scripts/start_local_stack.sh`
 - `scripts/stop_local_stack.sh`
 - `scripts/check_local_stack.sh`

@@ -49,6 +49,50 @@ After bootstrap, the required local UIs are:
 
 You do **not** need to run KisanSaathi locally if you are using the deployed Vercel target above.
 
+## If The CeRAI UI Opens But Shows No Data
+
+That is expected on a fresh clone. Bootstrap starts the CeRAI services, but it does not recreate the previously executed agriculture target/testcase/run history automatically.
+
+You have two options:
+
+### Option 1. Import generic sample data
+
+```bash
+./scripts/import_sample_data.sh
+```
+
+or during bootstrap:
+
+```bash
+IMPORT_SAMPLE_DATA=1 ./scripts/bootstrap_local_stack.sh
+```
+
+This gives you demo content only, not the exact agriculture evaluation records.
+
+### Option 2. Copy the exact agriculture evaluation database
+
+To see the exact agriculture targets, testcases, conversations, scores, and run history that were already created, copy one of these SQLite database files from the working CeRAI machine:
+
+```bash
+data/AIEvaluationData.db
+```
+
+or, if the archived merged snapshot is available:
+
+```bash
+data/AIEvaluationData_merged_with_agri.db
+```
+
+Place it into the same `data/` location in the cloned repo as `data/AIEvaluationData.db`, then restart the local stack:
+
+```bash
+./scripts/stop_local_stack.sh || true
+./scripts/start_local_stack.sh
+./scripts/check_local_stack.sh
+```
+
+This is the correct path if you want the CeRAI UI to show the actual agriculture work that was already executed. The generic sample-data import does not contain the added agriculture targets, testcase variants, run history, or score interpretations from the executed review.
+
 ## Quick Verification Before Starting A Run
 
 Verify that the deployed target responds before creating a run:

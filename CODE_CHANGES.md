@@ -2,7 +2,7 @@
 
 This file documents the changes made to the actual code and config files while getting `AIEvaluationTool` running locally in non-Docker mode.
 
-It does not document the helper scripts or the setup walkthrough in detail. Those live separately in `scripts/` and `LOCAL_SETUP.md`.
+It does not document the helper scripts or the setup walkthrough in detail. The current setup path is documented in `README.md` and `docs/TDMS_and_Dashboard_ui/setup.md`.
 
 ## Goal Of These Changes
 
@@ -226,46 +226,17 @@ After:
 - the local UI/backend stack can start first
 - heavier dependencies can be installed later when actual evaluation/report workflows are executed
 
-## What These Changes Do Not Yet Solve
+## Current Scope Note
 
-These changes were made to get the local stack running, not to complete full evaluation execution.
+This file started as a local bring-up change log. Some sections below are therefore historical notes about how the setup evolved before the current bootstrap-only flow settled.
 
-Still deferred:
+Current repo state:
 
-- full `deepeval`-based analysis path
-- `ollama`-dependent summary/report generation
-- `weasyprint`-based PDF report generation
-- full transformer/torch-based metric implementations
+- bootstrap is the only supported fresh-clone setup path
+- default bootstrap now includes the summary/report dependencies used by the executed local workflow, including `deepeval`, `ollama`, `rich`, `weasyprint`, and `python-iso639`
+- `INSTALL_EVAL_DEPS=1` is now only for heavier evaluator extras such as `transformers`, `torch`, `sentence_transformers`, `evaluate`, `language_tool_python`, `gliner`, `rouge_score`, and `levenshtein`
 
-Those can be added next once the Option A endpoint and evaluation path are chosen.
-
-### `scripts/install_local_dependencies.sh`
-
-Changes made:
-
-- added automatic local Python environment creation at `.conda-env` when the env is missing
-- detects a system `python3.11+` interpreter and creates the env with `python -m venv`
-- added `openai` to the base local dependency install
-- added `google-genai` to the base local dependency install
-- added an opt-in `INSTALL_EVAL_DEPS=1` path for:
-  - `deepeval`
-  - `ollama`
-  - `weasyprint`
-  - `transformers`
-  - `torch`
-
-Why:
-
-- the earlier script still required a manual Miniforge/mamba step before it could even run
-- later runtime testing required the OpenAI and Gemini SDKs for provider-backed API targets
-- those packages had been installed ad hoc in the local environment but were not reflected in the bootstrap script
-- the larger evaluation/report stack should be reproducible, but it should remain optional because it was not needed for the initial local bring-up
-
-Behavior impact:
-
-- a fresh clone no longer requires manual venv creation before dependency installation
-- a fresh local setup now reproduces the provider runtime path without extra manual package installs
-- the heavier evaluation/report toolchain can still be installed deliberately when needed for deeper analysis work
+The current setup instructions live in `README.md` and `docs/TDMS_and_Dashboard_ui/setup.md`.
 
 ### `scripts/bootstrap_local_stack.sh`
 
@@ -273,6 +244,7 @@ Changes made:
 
 - replaced the earlier thin wrapper with a fully self-contained one-command local bootstrap script
 - copies `.env.example` to `.env` when the root `.env` is missing
+- creates the runtime `.env` files for TDMS frontend, Dashboard frontend, auth service, and strategy config when they are missing
 - checks for a suitable Python runtime
 - installs local Miniforge when a suitable Python runtime is not already available
 - creates `.conda-env` automatically
@@ -280,9 +252,12 @@ Changes made:
 - installs a local Node.js runtime when `npm` is missing
 - falls back to a managed local Node.js runtime when the system Node version is too old
 - installs dependencies directly inside the script
+- includes `python-iso639` in the default local dependency set
+- includes the default analysis/report packages used by the local workflow
 - starts the local stack directly inside the script
 - runs health checks directly inside the script
 - optionally imports bundled sample data when `IMPORT_SAMPLE_DATA=1`
+- clears stale repo-local CeRAI processes before restart
 - verifies the dashboard frontend install by checking for `node_modules/html-webpack-plugin/lib/loader.js`
 - retries the dashboard frontend install once with a clean `node_modules` if that verification fails
 
