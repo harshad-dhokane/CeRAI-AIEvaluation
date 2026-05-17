@@ -4,9 +4,6 @@ from typing import Dict, Any, List
 from context import APIRuntimeContext
 from logger import get_logger
 
-from openai import OpenAI
-from google import genai
-
 logger = get_logger("interface_manager")
 
 
@@ -96,9 +93,21 @@ def handle_api_chat(
 # ------------------------------------------------------------------
 
 def _run_openai(ctx: APIRuntimeContext, prompt: str) -> str:
-    logger.info("Calling OpenAI API | model=%s", ctx.agent_name)
+    from openai import OpenAI
 
-    client = OpenAI()
+    if ctx.base_url:
+        logger.info(
+            "Calling OpenAI-compatible API | model=%s base_url=%s",
+            ctx.agent_name,
+            ctx.base_url,
+        )
+        client = OpenAI(
+            base_url=f"{ctx.base_url.rstrip('/')}/v1",
+            api_key="remote",
+        )
+    else:
+        logger.info("Calling OpenAI API | model=%s", ctx.agent_name)
+        client = OpenAI()
 
     response = client.chat.completions.create(
         model=ctx.agent_name,
@@ -112,6 +121,8 @@ def _run_openai(ctx: APIRuntimeContext, prompt: str) -> str:
 
 
 def _run_gemini(ctx: APIRuntimeContext, prompt: str) -> str:
+    from google import genai
+
     logger.info("Calling Gemini API | model=%s", ctx.agent_name)
 
     client = genai.Client()
@@ -125,6 +136,8 @@ def _run_gemini(ctx: APIRuntimeContext, prompt: str) -> str:
 
 
 def _run_local(ctx: APIRuntimeContext, prompt: str) -> str:
+    from openai import OpenAI
+
     logger.info(
         "Calling LOCAL OpenAI-compatible API | model=%s base_url=%s",
         ctx.agent_name,

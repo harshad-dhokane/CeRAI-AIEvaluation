@@ -13,12 +13,19 @@ FileLoader._load_env_vars(__file__)
 logger = get_logger("llm_judge")
 dflt_vals = FileLoader._to_dot_dict(__file__, os.getenv("DEFAULT_VALUES_PATH"), simple=True, strat_name="llm_judge")
 
+
+def _parse_model_names(raw_value: str):
+    if not raw_value:
+        return []
+    return [model.strip() for model in raw_value.split(",") if model.strip()]
+
 class LLMJudgeStrategy(Strategy):
     def __init__(self, name: str = "llm_judge", **kwargs) -> None:
         super().__init__(name=name)
         
         self.metric_name = kwargs.get("metric_name", dflt_vals.metric_name)
-        self.model_names = dflt_vals.model_names #os.getenv("LLM_AS_JUDGE_MODEL")
+        env_models = _parse_model_names(os.getenv("LLM_AS_JUDGE_MODEL", ""))
+        self.model_names = env_models or dflt_vals.model_names
         self.base_url = os.getenv("OLLAMA_URL")
         self.models = [CustomOllamaModel(model_name=model_name, url=self.base_url) for model_name in self.model_names]
         self.eval_type = name.split("_")[-1] if len(name.split("_")) > 2 else dflt_vals.eval_type
@@ -57,5 +64,4 @@ class LLMJudgeStrategy(Strategy):
 
 #/usr/share/ollama/.ollama/models/manifests
     
-
 

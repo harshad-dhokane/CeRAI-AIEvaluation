@@ -6,10 +6,6 @@ import os, sys
 import json 
 from requests import Response
 
-# Third-party model packages
-from openai import OpenAI
-from google import genai
-
 # setup the relative import path for data module.
 sys.path.append(os.path.dirname(__file__) + '/..')
 
@@ -64,6 +60,8 @@ class InterfaceManagerClient:
         self.gemini_client_ready = False
 
         if self.provider == "OPENAI":
+            from openai import OpenAI
+
             key = os.getenv("OPENAI_API_KEY")
             if not key:
                 raise RuntimeError("Missing OPENAI_API_KEY in .env")
@@ -199,6 +197,8 @@ class InterfaceManagerClient:
     # ---------------------------
 
     def _chat_gemini(self, chat_id: int, prompt: str):
+        from google import genai
+
         self.logger.info("Using Gemini client...")
         self.conversations[chat_id].append(
             {"role": "user", "content": prompt}
@@ -225,6 +225,8 @@ class InterfaceManagerClient:
     # ---------------------------
 
     def _chat_local(self, chat_id: int, prompt: str):
+        from openai import OpenAI
+
         self.logger.info("Using LOCAL Ollama server (OpenAI-compatible API)...")
 
         if not self.local_llm_base_url:

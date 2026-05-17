@@ -13,6 +13,12 @@ from typing import Optional, List
 
 logger = get_logger("utils_new")
 
+
+def _parse_model_names(raw_value: Optional[str]) -> List[str]:
+    if not raw_value:
+        return []
+    return [model.strip() for model in raw_value.split(",") if model.strip()]
+
 class FileLoader:
     """
     run_file_path : should be the __file__
@@ -199,7 +205,12 @@ class OllamaConnect:
         ollama_client = Client(host=OllamaConnect.ollama_url)
         tries = OllamaConnect.dflt_vals.n_tries
         resp_in_format = []
-        models = OllamaConnect.dflt_vals.model_names if model_names is None else model_names
+        env_models = _parse_model_names(os.getenv("LLM_AS_JUDGE_MODEL"))
+        models = (
+            env_models
+            if model_names is None and env_models
+            else (OllamaConnect.dflt_vals.model_names if model_names is None else model_names)
+        )
         while(resp_in_format == [] and tries > 0):
             for model in models:
                 try:

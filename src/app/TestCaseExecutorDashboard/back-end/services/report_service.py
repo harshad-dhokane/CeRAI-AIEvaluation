@@ -1,15 +1,15 @@
 from datetime import datetime
 from fastapi import HTTPException
-from lib.strategy.utils_new import OllamaConnect
-from rich.console import Console
-from rich.table import Table
 import json
 from configuration.paths import PROJECT_ROOT as project_root
 import os
-from lib.strategy.utils_new import EvaluationReport
 from fastapi.responses import FileResponse
 
 def get_report_service(run_name: str, db):
+    from lib.strategy.utils_new import EvaluationReport, OllamaConnect
+    from rich.console import Console
+    from rich.table import Table
+
     run = db.get_run_by_name(run_name=run_name)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -45,8 +45,12 @@ def get_report_service(run_name: str, db):
         score_card[detail.plan_name][detail.metric_name].setdefault(
             "Evaluation_Reason", {}
         )[detail.testcase_name] = conversation.evaluation_reason
-    
-      
+    if not score_card:
+        raise HTTPException(
+            status_code=400,
+            detail="Run has not been analysed yet. Run analysis before generating a report.",
+        )
+
 
     real_plans = [p for p in score_card if p != "PlanSummary"]
     multi_plan = len(real_plans) > 1
@@ -185,25 +189,25 @@ def get_report_service(run_name: str, db):
         for metrics in score_card.values()
         for m in metrics.values()
     )
-    filename = EvaluationReport.create_report(
+    report_builder = EvaluationReport()
+    headers, rows = report_builder.scorecard_to_table(score_card)
+    pdf_path = os.path.join(
+        reports_folder,
+        f"AI_Evaluation_Report_{target_name}_{run_name}.pdf"
+    )
+    report_builder.create_report(
         target_name=target_name,
         run_name=run_name,
         timestamp=timestamp,
         total_testcases=total_testcases,
-        target_summary=run_summary,
-        plan_summary=plan_summary,
+        run_summary=run_summary,
+        headers=headers,
+        rows=rows,
         score_card=score_card,
-        out_path=os.path.join(
-            reports_folder,
-            f"AI_Evaluation_Report_{target_name}_{run_name}.pdf"
-        ),
-        column_widths=[100, 80, 40, None, None] if multi_plan else [100, 80, 40, None]
-    )    
+        output_file=pdf_path,
+    )
     return FileResponse(
-        path=os.path.join(
-            reports_folder,
-            f"AI_Evaluation_Report_{target_name}_{run_name}.pdf"
-        ),
+        path=pdf_path,
         media_type='application/pdf',
         filename=f"AI_Evaluation_Report_{target_name}_{run_name}.pdf"
     )

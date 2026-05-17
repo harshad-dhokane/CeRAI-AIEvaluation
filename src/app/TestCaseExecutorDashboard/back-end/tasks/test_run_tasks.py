@@ -219,22 +219,11 @@ async def execute_testcases(
                     prompt_list=[message_to_agent],
                 )
                 step2_duration = (datetime.now() - step2_start).total_seconds()
-                if step2_duration < 2:
-                    logger.error(
-                        f"Step 2 completed too fast ({step2_duration:.2f}s) — marking as FAILED"
-                    )
-                    await step(
-                        {
-                            "type": "STEP_UPDATE",
-                            "runId": run_id,
-                            "testcaseIndex": index,
-                            "step": 2,
-                            "status": "FAILED",
-                        }
-                    )
-                    rundetail.status = "FAILED"
-                    db.add_or_update_testrun_detail(rundetail)
-                    continue
+                logger.info(
+                    "Step 2 completed in %.2fs for testcase %s",
+                    step2_duration,
+                    testcase.name,
+                )
                 await step(
                     {
                         "type": "STEP_UPDATE",

@@ -8,6 +8,9 @@ work without requiring the caller to set PYTHONPATH.
 """
 import os
 import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Ensure the project's `src` directory is on sys.path so top-level imports
 # like `lib` resolve when running this module directly.
@@ -22,6 +25,9 @@ SRC_DIR = os.path.abspath(os.path.join(THIS_DIR, "..", ".."))  # src/app
 
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+load_dotenv(PROJECT_ROOT / ".env")
 
 from routers import common, chat_router, api
 from fastapi import FastAPI

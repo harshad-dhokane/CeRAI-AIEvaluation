@@ -1,61 +1,115 @@
-# Setup 
+# Setup
 
-Use this guide to run TDMS and the Test Case Execution Tool (Dashboard) locally without Docker.
+Use this guide to run TDMS and the Test Case Execution Dashboard locally **without Docker**.
 
+This page is aligned with the helper scripts that now support a fresh-clone local bring-up.
 
+## Recommended Path
 
-## UI And Service Matrix
+From a fresh clone:
+
+```bash
+git clone https://github.com/cerai-iitm/AIEvaluationTool.git
+cd AIEvaluationTool
+./scripts/bootstrap_local_stack.sh
+```
+
+Optional sample-data import during bootstrap:
+
+```bash
+IMPORT_SAMPLE_DATA=1 ./scripts/bootstrap_local_stack.sh
+```
+
+Optional heavier evaluation/report dependencies:
+
+```bash
+INSTALL_EVAL_DEPS=1 ./scripts/bootstrap_local_stack.sh
+```
+
+This is the preferred local path because the bootstrap script:
+
+- provisions Python and Node locally if required
+- creates the repo-local virtual environment at `.conda-env`
+- creates missing `.env` files from `.env.example`
+- installs Python dependencies
+- installs frontend dependencies
+- starts the local services
+- runs health checks
+
+## Local UI And Service Matrix
 
 ### Frontend UIs
 
-- `TDMS UI` (Vite build output: `dist/`)
-- `Test Case Execution Dashboard UI` (CRA build output: `build/`)
+- `TDMS UI`
+- `Test Case Execution Dashboard UI`
 
 ### Other User-Facing Web Interface
 
-- `Central Login UI` is served by the auth backend at `/web/login` (no separate frontend build needed)
+- `Central Login UI` served by the auth backend at `/web/login`
 
 ### Backend Services
 
-- `auth-service` (`localhost:7500`)
-- `tdms-backend` (`localhost:7250`)
-- `dashboard-backend` (`localhost:7000` from `config.json`)
-- `interface-manager` (`localhost:8000`)
+- `auth-service` on `localhost:7500`
+- `tdms-backend` on `localhost:7250`
+- `dashboard-backend` on `localhost:7000`
+- `interface-manager` on `localhost:8000`
 
-## Prerequisites
+## Local Prerequisites
 
-- Python `3.10+`
-- Node.js `20.19+` or `22.12+`
-- npm
-- Chrome browser (needed for interface-manager web automation scenarios)
+Practical assumptions for a smooth local run:
 
-## Create Required `.env` Files
+- Git
+- `curl` or `wget`
+- Python `3.11+` if you want to create the virtual environment manually
+- Node.js `18+` if you want to avoid local Node auto-provisioning
+- Chrome browser for local web/WhatsApp automation scenarios
 
-Create and populate all required `.env` files before starting services.
+## Environment Files
 
-### Root `.env` (repository root)
+The local stack uses:
 
-This is used by shared runtime components (for example `interface_manager` and API key based providers).
+- root `.env`
+- root `config.json`
+- `src/app/TDMS/front-end/.env`
+- `src/app/TestCaseExecutorDashboard/front-end/.env`
+- `src/app/auth_service/.env`
+- `src/lib/strategy/.env`
+- `src/app/interface_manager/config.json`
+
+The helper scripts now create the missing `.env` files automatically from:
+
+- `.env.example`
+- `src/app/TDMS/front-end/.env.example`
+- `src/app/TestCaseExecutorDashboard/front-end/.env.example`
+- `src/app/auth_service/.env.example`
+- `src/lib/strategy/.env.example`
+
+### Root `.env`
+
+If you are setting up manually:
 
 ```bash
 cp .env.example .env
 ```
 
-Example values in root `.env`:
+Default local example:
 
 ```env
-OLLAMA_URL=http://localhost:12434
-GPU_URL=http://localhost:16000
-LLM_AS_JUDGE_MODEL=
-PERSPECTIVE_API_KEY=
-SARVAM_API_KEY=
-GEMINI_API_KEY=
-OPENAI_API_KEY=
+OLLAMA_URL="http://localhost:11434"
+GPU_URL="http://localhost:16000"
+LLM_AS_JUDGE_MODEL="qwen3:32b"
+HF_TOKEN=""
+PERSPECTIVE_API_KEY=""
+SARVAM_API_KEY=""
+GEMINI_API_KEY=""
+OPENAI_API_KEY=""
 ```
 
 ### TDMS frontend `.env`
 
-Create `src/app/TDMS/front-end/.env`:
+```bash
+cp src/app/TDMS/front-end/.env.example src/app/TDMS/front-end/.env
+```
 
 ```env
 VITE_API_BASE_URL="http://localhost:7250"
@@ -65,7 +119,9 @@ VITE_TEST_RUNS_HOME_URL="http://localhost:3000"
 
 ### Dashboard frontend `.env`
 
-Create `src/app/TestCaseExecutorDashboard/front-end/.env`:
+```bash
+cp src/app/TestCaseExecutorDashboard/front-end/.env.example src/app/TestCaseExecutorDashboard/front-end/.env
+```
 
 ```env
 REACT_APP_API_BASE_URL="http://localhost:7000"
@@ -77,41 +133,31 @@ REACT_APP_USER_LIST_URL="http://localhost:8080/users"
 
 ### Auth service `.env`
 
-Create `src/app/auth_service/.env`:
+```bash
+cp src/app/auth_service/.env.example src/app/auth_service/.env
+```
 
 ```env
 TCE_APP_URL="http://localhost:3000"
 TDMS_APP_URL="http://localhost:8080/dashboard"
-
 ```
 
 ### Strategy `.env`
-
-For strategy defaults used by `src/lib/strategy/utils_new.py`, keep `src/lib/strategy/.env` present.
 
 ```bash
 cp src/lib/strategy/.env.example src/lib/strategy/.env
 ```
 
-Expected values:
-
 ```env
-DATA_PATH=data/
-DEFAULT_VALUES_PATH=data/defaults.json
-EXAMPLES_DIR=data/examples/
-IMAGES_DIR=data/images/
+DATA_PATH="data/"
+DEFAULT_VALUES_PATH="data/defaults.json"
+EXAMPLES_DIR="data/examples/"
+IMAGES_DIR="data/images/"
 ```
-
-Important:
-
-- Keep all runtime configuration in these `.env` files.
-- Do not pass `VITE_*` or `REACT_APP_*` variables inline in run commands.
 
 ## Configure Root `config.json`
 
-Update repository root [`config.json`](../../config.json).
-
-For local SQLite:
+For the supported local SQLite path, keep root `config.json` aligned like this:
 
 ```json
 {
@@ -126,108 +172,87 @@ For local SQLite:
 }
 ```
 
-For local MariaDB:
+This is the recommended local path because it avoids MariaDB and Docker dependencies during bring-up.
 
-```json
-{
-  "db": {
-    "engine": "mariadb",
-    "host": "localhost",
-    "port": 3306,
-    "user": "your_username",
-    "password": "your_password",
-    "database": "aievaluationtool"
-  },
-  "port": {
-    "back-end": "7000",
-    "interface-manager": "8000"
-  }
-}
-```
+## Manual Local Setup
 
-Important:
+If you do not want to use the one-command bootstrap:
 
-- TDMS backend and Dashboard backend reads `db.engine`.
-- Keep both keys aligned.
-
-## Install Dependencies
-
-From repository root:
+### 1. Clone the repository
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/cerai-iitm/AIEvaluationTool.git
+cd AIEvaluationTool
 ```
 
-Install UI dependencies:
+### 2. Create the local virtual environment
 
 ```bash
-cd src/app/TDMS/front-end && npm install
-cd ../../TestCaseExecutorDashboard/front-end && npm install
+python3.11 -m venv .conda-env
 ```
 
-## Run Backend Services Locally
-
-Start each service in a separate terminal.
-
-1. Auth service:
+### 3. Create the `.env` files
 
 ```bash
-cd src/app/auth_service
-python main.py
+cp .env.example .env
+cp src/app/TDMS/front-end/.env.example src/app/TDMS/front-end/.env
+cp src/app/TestCaseExecutorDashboard/front-end/.env.example src/app/TestCaseExecutorDashboard/front-end/.env
+cp src/app/auth_service/.env.example src/app/auth_service/.env
+cp src/lib/strategy/.env.example src/lib/strategy/.env
 ```
 
-2. TDMS backend:
+### 4. Install dependencies
 
 ```bash
-cd src/app/TDMS/back-end
-python main.py
+./scripts/install_local_dependencies.sh
 ```
 
-3. Dashboard backend (test case execution backend):
+### 5. Start all services
 
 ```bash
-cd src/app/TestCaseExecutorDashboard/back-end
-python main.py
+./scripts/start_local_stack.sh
 ```
 
-4. Interface manager:
+### 6. Validate the local URLs
 
 ```bash
-cd src/app/interface_manager
-python main.py
+./scripts/check_local_stack.sh
 ```
-## GPU Setup
 
-For GPU setup instructions, refer to [gpu_setup.md](../ai_evaluation_tool_cli/gpu_setup.md).
-
-## Run Frontend 
-
-This is best for development and frequent UI changes.
-
-1. Run TDMS frontend:
+### 7. Optional sample-data import
 
 ```bash
-cd src/app/TDMS/front-end
-npm run dev
+./scripts/import_sample_data.sh
 ```
 
-2. Run Dashboard frontend:
+### 8. Stop the stack later
 
 ```bash
-cd src/app/TestCaseExecutorDashboard/front-end
-npm start
+./scripts/stop_local_stack.sh
 ```
 
-Access URLs in this mode:
+## Local URLs
 
+- Auth service: `http://localhost:7500`
+- TDMS backend: `http://localhost:7250`
+- Dashboard backend: `http://localhost:7000`
+- Interface manager: `http://localhost:8000`
 - TDMS UI: `http://localhost:8080`
 - Dashboard UI: `http://localhost:3000`
 - Central login UI: `http://localhost:7500/web/login`
+
 ## Validation Checklist
 
-- Backend services are reachable on `7500`, `7250`, `7000`, and `8000`.
-- TDMS login redirects to auth and returns correctly.
-- Dashboard login redirects to auth and returns correctly.
-- TDMS `Home` link opens dashboard.
-- Dashboard `Test Data` link opens TDMS.
-- New run and continue run flows can load filters and start execution.
+- Auth service responds on `7500`
+- TDMS backend responds on `7250`
+- Dashboard backend responds on `7000`
+- Interface manager responds on `8000`
+- TDMS UI loads on `8080`
+- Dashboard UI loads on `3000`
+- Login redirects work between auth, TDMS, and Dashboard
+
+## Related Docs
+
+- [Repository README](../../README.md)
+- [Detailed local setup notes](../../LOCAL_SETUP.md)
+- [GPU setup](../ai_evaluation_tool_cli/gpu_setup.md)

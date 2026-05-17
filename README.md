@@ -1,83 +1,229 @@
 # Conversational AI Evaluation Tool - v2.0
 
-## 1. Overview
-
 AIEvaluationTool is an end-to-end platform for evaluating conversational AI systems across API, web, and WhatsApp-style interfaces.
 
 It combines:
 
-- **TDMS** for managing test data (test cases, plans, prompts, strategies)
+- **TDMS** for creating and managing prompts, test cases, plans, strategies, and targets
 - **Test Case Execution Dashboard** for running evaluations, tracking runs, and reviewing results
-- **CLI workflow** for importer, execution, analysis, and report generation
+- **CLI and helper scripts** for importer, local-stack bring-up, health checks, and report generation
 
-For full details, refer to the [official documentation](https://cerai-iitm.github.io/AIEvaluationTool/).
+Full product documentation is available at:
 
-## 2. Architecture And Design
+- [AIEvaluationTool docs portal](https://cerai-iitm.github.io/AIEvaluationTool/)
 
-TDMS and the Dashboard run as a unified application layer behind a single Docker gateway.
+## Recommended Local Setup
 
-![System Architecture](screenshots/Arch.jpg)
+The recommended path for a fresh clone is the **non-Docker local bootstrap**.
 
-## 3. Configuration
+It is the shortest working path because it:
 
-Docker reads runtime values from `.env` and application-level configuration from `config.json`.
+- provisions a local Python runtime if required
+- creates the local virtual environment at `.conda-env`
+- provisions a local Node.js runtime if required
+- installs Python and frontend dependencies
+- creates missing `.env` files from `.env.example`
+- starts the local services
+- runs basic health checks
 
-### 3.1 Create Environment File
+## Quick Start From A Fresh Clone
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/cerai-iitm/AIEvaluationTool.git
+cd AIEvaluationTool
+```
+
+### 2. Run the one-command bootstrap
+
+```bash
+./scripts/bootstrap_local_stack.sh
+```
+
+Optional: if you also want the bundled sample TDMS/test-run data imported automatically:
+
+```bash
+IMPORT_SAMPLE_DATA=1 ./scripts/bootstrap_local_stack.sh
+```
+
+Optional: if you also want the heavier evaluation/report-generation dependencies:
+
+```bash
+INSTALL_EVAL_DEPS=1 ./scripts/bootstrap_local_stack.sh
+```
+
+### 3. Open the local applications
+
+- Central login: `http://localhost:7500/web/login`
+- TDMS UI: `http://localhost:8080`
+- Test Case Execution Dashboard: `http://localhost:3000`
+
+### 4. Default local credentials
+
+If sample data has been imported, the seeded accounts are:
+
+- `admin / admin123`
+- `manager / manager123`
+- `curator / curator123`
+- `viewer / viewer123`
+
+## What The Bootstrap Script Does
+
+`./scripts/bootstrap_local_stack.sh` is the preferred workflow for a clean local machine.
+
+It will:
+
+1. detect the local platform
+2. create missing runtime `.env` files from the checked-in `.env.example` files
+3. provision Python `3.11+` locally if the machine does not already have it
+4. create the repo-local virtual environment at `.conda-env`
+5. provision Node.js locally if the machine does not already have a suitable version
+6. install Python dependencies needed for the local SQLite stack and provider-backed API targets
+7. install frontend dependencies for both TDMS and Dashboard
+8. start all local services
+9. verify the URLs are reachable
+
+## Local Runtime Files
+
+The local helper flow expects these files:
+
+- root `.env`
+- root `config.json`
+- `src/app/TDMS/front-end/.env`
+- `src/app/TestCaseExecutorDashboard/front-end/.env`
+- `src/app/auth_service/.env`
+- `src/lib/strategy/.env`
+- `src/app/interface_manager/config.json`
+
+For a fresh clone, the helper scripts now create the missing `.env` files automatically from:
+
+- `.env.example`
+- `src/app/TDMS/front-end/.env.example`
+- `src/app/TestCaseExecutorDashboard/front-end/.env.example`
+- `src/app/auth_service/.env.example`
+- `src/lib/strategy/.env.example`
+
+## Manual Local Setup
+
+If you do not want the one-command bootstrap, use the manual helper path below.
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/cerai-iitm/AIEvaluationTool.git
+cd AIEvaluationTool
+```
+
+### 2. Create the local Python environment manually
+
+Use Python `3.11` or newer:
+
+```bash
+python3.11 -m venv .conda-env
+```
+
+If your machine uses another compatible interpreter:
+
+```bash
+python3 -m venv .conda-env
+```
+
+### 3. Install the required local dependencies
+
+```bash
+./scripts/install_local_dependencies.sh
+```
+
+Optional heavier dependencies:
+
+```bash
+INSTALL_EVAL_DEPS=1 ./scripts/install_local_dependencies.sh
+```
+
+### 4. Start the local stack
+
+```bash
+./scripts/start_local_stack.sh
+```
+
+### 5. Verify the services
+
+```bash
+./scripts/check_local_stack.sh
+```
+
+### 6. Stop the local stack
+
+```bash
+./scripts/stop_local_stack.sh
+```
+
+## Environment Example Notes
+
+### Root `.env`
+
+Create it with:
 
 ```bash
 cp .env.example .env
 ```
 
-### 3.2 Required Files
+The default example works for a local clone. Provider keys can remain blank until you actually use those paths.
 
-- Root `.env`
-- Root `config.json`
-- `src/app/interface_manager/config.json` (for browser automation settings)
+### Frontend and auth `.env` files
 
-### 3.3 XPath Configuration For Web App Automation
-
-For web/WhatsApp targets, configure element selectors in:
-
-- `src/app/interface_manager/xpaths.json`
-- `src/app/interface_manager/credentials.json`
-
-Use stable relative XPath values for login fields, prompt input areas, response containers, and logout elements.
-
-Detailed configuration guide: [Docker Setup and Configuration](docs/docker_setup/setup_and_configuration.md)
-
-## 4. Getting Started With Docker
-
-### 4.1 Build And Start
+For a manual setup, create them from the checked-in examples:
 
 ```bash
-docker compose build
-docker compose up
+cp src/app/TDMS/front-end/.env.example src/app/TDMS/front-end/.env
+cp src/app/TestCaseExecutorDashboard/front-end/.env.example src/app/TestCaseExecutorDashboard/front-end/.env
+cp src/app/auth_service/.env.example src/app/auth_service/.env
+cp src/lib/strategy/.env.example src/lib/strategy/.env
 ```
 
-### 4.2 Open The Application
+## Default Local URLs
 
-- TCE UI: `http://localhost:${NGINX_PORT:-80}/`
-- TDMS UI: `http://localhost:${NGINX_PORT:-80}/tdms/`
-- Selenium live view: `http://localhost:${NGINX_PORT:-80}/selenium/`
-- Health: `http://localhost:${NGINX_PORT:-80}/healthz`
+- Auth service: `http://localhost:7500`
+- TDMS backend: `http://localhost:7250`
+- Dashboard backend: `http://localhost:7000`
+- Interface manager: `http://localhost:8000`
+- TDMS frontend: `http://localhost:8080`
+- Dashboard frontend: `http://localhost:3000`
 
-### 4.3 Stop Or Reset
+## Local Prerequisites
 
-```bash
-docker compose down
-# full reset
-docker compose down -v
-```
+The bootstrap script can provision some tooling automatically, but these are still the practical assumptions:
 
-### 4.4 Other Run Modes
+- Git
+- `curl` or `wget`
+- Python `3.11+` if you want to create the virtual environment manually
+- Node.js `18+` if you want to avoid local Node auto-provisioning
+- Chrome browser for local web/WhatsApp automation scenarios
 
-- Docker CLI flow: [Docker Run CLI](docs/docker_setup/docker_run.md)
-- Docker UI flow: [Docker Run UI](docs/docker_setup/docker_run_ui.md)
-- GPU model setup: [Docker GPU Setup](docs/docker_setup/gpu_setup.md)
-- Non-Docker/local setup: [TDMS + Dashboard Setup](docs/TDMS_and_Dashboard_ui/setup.md)
-- Full docs portal: [AIEvaluationTool Documentation](https://cerai-iitm.github.io/AIEvaluationTool/)
+## Docker
 
-## 5. How The Project Came To Life
+Docker is still supported, but it is no longer the simplest path for a fresh local machine.
+
+Useful references:
+
+- [Local non-Docker setup](docs/TDMS_and_Dashboard_ui/setup.md)
+- [Local setup notes](./LOCAL_SETUP.md)
+- [Docker run for UI stack](docs/docker_setup/docker_run_ui.md)
+- [Docker setup and configuration](docs/docker_setup/setup_and_configuration.md)
+
+## Related Local Helper Scripts
+
+- `scripts/bootstrap_local_stack.sh`
+- `scripts/install_local_dependencies.sh`
+- `scripts/start_local_stack.sh`
+- `scripts/stop_local_stack.sh`
+- `scripts/check_local_stack.sh`
+- `scripts/import_sample_data.sh`
+
+## Project Evolution
+
+![System Architecture](screenshots/Arch.jpg)
 
 ![AI Eval Tool Evolution](screenshots/AIEvalTool.gif)
 

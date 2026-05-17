@@ -272,12 +272,17 @@ async def run_analyse_background_service(run_name: str, db, mode: str = "rerun_a
 
                 raw_score, reason = await _run_in_thread(_eval_sync)
                 score = float(raw_score) if raw_score is not None else None
+                if score is None:
+                    raise ValueError("Failed to analyse")
                 if not reason or str(reason).strip() == "":
-                    raise ValueError(
-                        f"Failed to analyse"
+                    logger.warning(
+                        "No evaluation reason generated for testcase='%s' detail_id=%s. Persisting score without model explanation.",
+                        testcase_name,
+                        detail_id,
                     )
+                    reason = "No evaluation reason generated."
                 # Persist evaluation to conversation (best effort)
-                conversation.evaluation_score = raw_score
+                conversation.evaluation_score = score
                 conversation.evaluation_reason = reason
                 conversation.evaluation_ts = datetime.now().isoformat()
                 db.add_or_update_conversation(conversation=conversation, override=True)
