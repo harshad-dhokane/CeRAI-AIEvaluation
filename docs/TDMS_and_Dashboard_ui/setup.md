@@ -13,8 +13,8 @@ If you specifically want to re-run the agriculture evaluation against the deploy
 From a fresh clone:
 
 ```bash
-git clone https://github.com/cerai-iitm/AIEvaluationTool.git
-cd AIEvaluationTool
+git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
+cd CeRAI-AIEvaluation
 ./scripts/bootstrap_local_stack.sh
 ```
 
@@ -185,8 +185,8 @@ If you do not want to use the one-command bootstrap:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/cerai-iitm/AIEvaluationTool.git
-cd AIEvaluationTool
+git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
+cd CeRAI-AIEvaluation
 ```
 
 ### 2. Create the local virtual environment

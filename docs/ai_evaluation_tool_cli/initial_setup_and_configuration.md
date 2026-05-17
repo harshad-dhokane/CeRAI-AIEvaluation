@@ -25,8 +25,8 @@ This page covers everything required before running the AI Evaluation Tool from 
 ## Clone The Repository
 
 ```bash
-git clone https://github.com/cerai-iitm/AIEvaluationTool
-cd AIEvaluationTool
+git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
+cd CeRAI-AIEvaluation
 ```
 
 ## Create A Python Virtual Environment

@@ -305,7 +305,7 @@ export default function App() {
               {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             </button>
             <a
-              href="https://github.com/cerai-iitm/AIEvaluationTool"
+              href="https://github.com/harshad-dhokane/CeRAI-AIEvaluation"
               target="_blank"
               rel="noopener noreferrer"
               className="hidden text-muted-foreground transition-colors hover:text-foreground sm:block"

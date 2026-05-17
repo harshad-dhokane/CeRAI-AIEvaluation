@@ -45,8 +45,8 @@ That file documents:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/cerai-iitm/AIEvaluationTool.git
-cd AIEvaluationTool
+git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
+cd CeRAI-AIEvaluation
 ```
 
 ### 2. Run the one-command bootstrap
@@ -125,8 +125,8 @@ If you do not want the one-command bootstrap, use the manual helper path below.
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/cerai-iitm/AIEvaluationTool.git
-cd AIEvaluationTool
+git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
+cd CeRAI-AIEvaluation
 ```
 
 ### 2. Create the local Python environment manually

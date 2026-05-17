@@ -23,8 +23,8 @@ This setup targets the local stack that was used successfully for the Option A e
 From a fresh clone:
 
 ```bash
-git clone https://github.com/cerai-iitm/AIEvaluationTool.git
-cd AIEvaluationTool
+git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
+cd CeRAI-AIEvaluation
 ./scripts/bootstrap_local_stack.sh
 ```
 
@@ -60,8 +60,8 @@ Use this if you want to control each step yourself.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/cerai-iitm/AIEvaluationTool.git
-cd AIEvaluationTool
+git clone https://github.com/harshad-dhokane/CeRAI-AIEvaluation.git
+cd CeRAI-AIEvaluation
 ```
 
 ### 2. Create the local virtual environment
