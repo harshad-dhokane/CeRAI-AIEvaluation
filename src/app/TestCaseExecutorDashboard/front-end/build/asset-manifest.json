@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/static/css/main.5ba7ab67.css",
+    "main.js": "/static/js/main.bc6d1f40.js",
+    "static/media/bootstrap-icons.woff?": "/static/media/bootstrap-icons.1295669cd4e305c97f2c.woff",
+    "static/media/bootstrap-icons.woff2?": "/static/media/bootstrap-icons.92ea18a81d737146ff04.woff2",
+    "static/media/Test-run.png": "/static/media/Test-run.a089fff808457e5cbd43.png",
+    "static/media/cerai-logo.png": "/static/media/cerai-logo.fd6d34d8d7efe7862576.png",
+    "index.html": "/index.html",
+    "main.5ba7ab67.css.map": "/static/css/main.5ba7ab67.css.map",
+    "main.bc6d1f40.js.map": "/static/js/main.bc6d1f40.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.5ba7ab67.css",
+    "static/js/main.bc6d1f40.js"
+  ]
+}

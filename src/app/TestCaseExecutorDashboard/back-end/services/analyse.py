@@ -5,9 +5,11 @@ from threading import Lock
 import asyncio
 import os
 import requests
+from dotenv import load_dotenv
 from lib.utils import get_logger, get_logger_verbosity
 logger = get_logger(__name__)
 from services.ws_manager import ws_manager
+from configuration.paths import PROJECT_ROOT
 
 ollama_port = os.getenv("OLLAMA_URL")
 gpu_url = os.getenv("GPU_URL")
@@ -52,6 +54,7 @@ def get_analyse_status_service(run_name: str):
 def start_analyse_service(run_name: str, db, background_tasks: BackgroundTasks, mode: str = "rerun_all"):
     logger.info(f"[SERVICE] Starting analysis service for run '{run_name}' with mode '{mode}'")
     try:
+        load_dotenv(os.path.join(PROJECT_ROOT, ".env"), override=True)
         run = db.get_run_by_name(run_name=run_name)
         if not run:
             logger.error(f"Run with name '{run_name}' not found.")
@@ -150,9 +153,72 @@ def _stringify_error(e: Exception) -> str:
         return "Unknown error"
 
 
+def _build_analysis_summary(db, run_name: str):
+    load_dotenv(os.path.join(PROJECT_ROOT, ".env"), override=True)
+    from lib.strategy.utils_new import OllamaConnect
+
+    run_details = db.get_all_run_details_by_run_name(run_name=run_name)
+    score_card = {}
+
+    for detail in run_details:
+        conversation = db.get_conversation_by_id(detail.conversation_id)
+        if not conversation:
+            continue
+        if conversation.evaluation_score is None:
+            continue
+
+        plan_metrics = score_card.setdefault(detail.plan_name, {})
+        metric_data = plan_metrics.setdefault(
+            detail.metric_name,
+            {"Testcases": {}, "Evaluation_Reason": {}},
+        )
+
+        metric_data["Testcases"][detail.testcase_name] = float(conversation.evaluation_score)
+
+        reason = (conversation.evaluation_reason or "").strip()
+        if reason:
+            metric_data["Evaluation_Reason"][detail.testcase_name] = reason
+
+    real_plans = [plan_name for plan_name in score_card.keys() if plan_name != "PlanSummary"]
+    if not real_plans:
+        return None
+
+    for plan_name, metrics in score_card.items():
+        if plan_name == "PlanSummary":
+            continue
+
+        for metric_name, metric_data in metrics.items():
+            scores = list(metric_data.get("Testcases", {}).values())
+            reasons = list(metric_data.get("Evaluation_Reason", {}).values())
+
+            if not scores:
+                continue
+
+            metric_data["metric_summary"] = OllamaConnect.get_metric_summary(
+                metric_name,
+                scores=scores,
+                reasons=reasons,
+            )
+
+        plan_summary = OllamaConnect.get_single_plan_summary(plan_name, metrics)
+        for metric_data in metrics.values():
+            metric_data["plan_summary"] = plan_summary
+
+    if len(real_plans) > 1:
+        return OllamaConnect.get_run_summary(score_card)
+
+    first_plan = real_plans[0]
+    first_metric = next(iter(score_card[first_plan].values()), None)
+    if not first_metric:
+        return None
+
+    return first_metric.get("plan_summary")
+
+
 async def run_analyse_background_service(run_name: str, db, mode: str = "rerun_all"):
     analysis_start_ts = datetime.now()
     try:
+        load_dotenv(os.path.join(PROJECT_ROOT, ".env"), override=True)
         await _safe_ws_send({
             "type": "ANALYSIS_STARTED",
             "runName": run_name,

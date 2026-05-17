@@ -25,6 +25,8 @@ interface RunSummary {
 interface TestRunResponse {
   summary: RunSummary;
   details: RunDetail[];
+  analysis_summary?: string | null;
+  analysis_judge_model?: string | null;
 }
 
 interface AnalyseStatusResponse {
@@ -313,6 +315,8 @@ const Analysis: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [details, setDetails] = useState<RunDetail[]>([]);
+  const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
+  const [analysisJudgeModel, setAnalysisJudgeModel] = useState<string | null>(null);
   const [analysisStartTs, setAnalysisStartTs] = useState<string | null>(null);
   const [analysisEndTs, setAnalysisEndTs] = useState<string | null>(null);
   const [analysisCurrent, setAnalysisCurrent] = useState(0);
@@ -354,6 +358,8 @@ const Analysis: React.FC = () => {
       }
       const data: TestRunResponse = await res.json();
       setSummary(data.summary);
+      setAnalysisJudgeModel(data.analysis_judge_model ?? null);
+      setAnalysisSummary(keepOnlyCompleted ? null : (data.analysis_summary ?? null));
       let serverDetails = data.details || [];
 
       if (keepOnlyCompleted) {
@@ -522,6 +528,7 @@ const Analysis: React.FC = () => {
           if (payload.type === "ANALYSIS_STARTED") {
             setIsAnalysing(true);
             setIsCompleted(false);
+            setAnalysisSummary(null);
             // Mark first detail as running
             setDetails((prev) => {
               const sorted = [...prev].sort((a, b) => a.detail_id - b.detail_id);
@@ -545,6 +552,7 @@ const Analysis: React.FC = () => {
             setIsCompleted(true);
             setRunningDetailId(null);
             applyProgress(payload);
+            await fetchDetails(runName, true, false, true);
             // Don't refresh - keep the current filtered view
             if (orderedDetailsRef.current.length > 0) {
               const last = orderedDetailsRef.current.length - 1;
@@ -671,6 +679,20 @@ const Analysis: React.FC = () => {
           </span>
         </div>
       </section>
+
+      {analysisSummary && (
+        <section className={styles.summaryPanel}>
+          <div className={styles.summaryPanelHeader}>
+            <h3>Evaluation Summary</h3>
+            {analysisJudgeModel && (
+              <span className={styles.summaryPanelMeta}>
+                Judge model: {analysisJudgeModel}
+              </span>
+            )}
+          </div>
+          <p className={styles.summaryText}>{analysisSummary}</p>
+        </section>
+      )}
 
       <section className={styles.executionWrap}>
         <div className={styles.executionHeaderRow}>

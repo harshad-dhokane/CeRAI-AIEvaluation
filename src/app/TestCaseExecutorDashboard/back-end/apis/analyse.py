@@ -1,7 +1,14 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
-from services.analyse import get_analyse_status_service, start_analyse_service
+from services.analyse import (
+    _build_analysis_summary,
+    get_analyse_status_service,
+    start_analyse_service,
+)
 from services.testruns import get_test_run_service
+from dotenv import load_dotenv
+from configuration.paths import PROJECT_ROOT
+import os
 
 router = APIRouter()
 from configuration.database import get_db
@@ -44,8 +51,15 @@ def get_analyse_details(RunName: str, db = Depends(get_db), mode: str = Query("r
             print(f"Retry Failed: {len(filtered_run_details)} / {len(run_details)} selected")
             run_details = filtered_run_details
         
-        # Return the filtered run details in the same format as GET_TEST_RUN_DETAILS
-        return get_test_run_service(db, RunName)
+        # Return the run details enriched with a narrative summary for the analysis view.
+        payload = get_test_run_service(db, RunName)
+        payload = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
+
+        load_dotenv(os.path.join(PROJECT_ROOT, ".env"), override=True)
+        payload["analysis_summary"] = _build_analysis_summary(db, RunName)
+        payload["analysis_judge_model"] = os.getenv("LLM_AS_JUDGE_MODEL")
+
+        return payload
     except HTTPException:
         raise
     except Exception as e:

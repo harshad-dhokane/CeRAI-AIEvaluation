@@ -211,10 +211,13 @@ install_python_dependencies() {
     sqlalchemy-utils
     pandas
     python-dotenv
+    python-iso639
     beautifulsoup4
     ddgs
     openai
     google-genai
+    deepeval
+    rich
   )
 
   local eval_packages=(
@@ -223,6 +226,12 @@ install_python_dependencies() {
     weasyprint
     transformers
     torch
+    sentence_transformers
+    evaluate
+    language_tool_python
+    gliner
+    rouge_score
+    levenshtein
   )
 
   log "Installing Python dependencies"
@@ -275,6 +284,44 @@ load_root_env() {
   fi
 }
 
+cleanup_pattern() {
+  local label="$1"
+  local pattern="$2"
+
+  if pgrep -f "${pattern}" >/dev/null 2>&1; then
+    pkill -f "${pattern}" || true
+    log "Stopped stale ${label} processes"
+  fi
+}
+
+reset_runtime_processes() {
+  mkdir -p "${PID_DIR}"
+
+  shopt -s nullglob
+  for pid_file in "${PID_DIR}"/*.pid; do
+    local pid
+    pid="$(cat "${pid_file}")"
+
+    if kill -0 "${pid}" 2>/dev/null; then
+      local pgid=""
+      pgid="$(ps -o pgid= "${pid}" 2>/dev/null | tr -d ' ')"
+
+      if [[ -n "${pgid}" ]] && [[ "${pgid}" == "${pid}" ]]; then
+        kill -- "-${pgid}" 2>/dev/null || kill "${pid}" 2>/dev/null || true
+      else
+        kill "${pid}" 2>/dev/null || true
+      fi
+    fi
+
+    rm -f "${pid_file}"
+  done
+  shopt -u nullglob
+
+  cleanup_pattern "uvicorn" "${ROOT_DIR}/.conda-env/bin/python -m uvicorn main:app"
+  cleanup_pattern "dashboard frontend" "${ROOT_DIR}/src/app/TestCaseExecutorDashboard/front-end/node_modules/.bin/react-scripts start"
+  cleanup_pattern "tdms frontend" "${ROOT_DIR}/src/app/TDMS/front-end/node_modules/.bin/vite"
+}
+
 start_service() {
   local name="$1"
   local workdir="$2"
@@ -290,9 +337,20 @@ start_service() {
 
   (
     cd "${workdir}"
-    nohup "$@" > "${log_file}" 2>&1 &
+    if have_cmd setsid; then
+      nohup setsid "$@" > "${log_file}" 2>&1 < /dev/null &
+    else
+      nohup "$@" > "${log_file}" 2>&1 < /dev/null &
+    fi
     echo $! > "${pid_file}"
   )
+
+  sleep 1
+  if ! kill -0 "$(cat "${pid_file}")" 2>/dev/null; then
+    echo "${name} exited immediately after launch. Recent log output:" >&2
+    tail -n 20 "${log_file}" >&2 || true
+    exit 1
+  fi
 
   log "Started ${name}; log: ${log_file}"
 }
@@ -315,6 +373,60 @@ wait_for_url() {
 
   echo "Health check failed for ${name} -> ${url}" >&2
   return 1
+}
+
+wait_for_html_url() {
+  local name="$1"
+  local url="$2"
+  local max_attempts="${3:-60}"
+  local attempt=1
+
+  while (( attempt <= max_attempts )); do
+    if curl -fsS -H "Accept: text/html" "${url}" >/dev/null 2>&1; then
+      log "OK ${name} -> ${url}"
+      return 0
+    fi
+
+    sleep 2
+    ((attempt++))
+  done
+
+  echo "Health check failed for ${name} -> ${url}" >&2
+  return 1
+}
+
+port_is_available() {
+  local python_bin="$1"
+  local port="$2"
+
+  "${python_bin}" - "${port}" <<'PY' >/dev/null 2>&1
+import socket
+import sys
+
+port = int(sys.argv[1])
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.bind(("0.0.0.0", port))
+    except OSError:
+        raise SystemExit(1)
+PY
+}
+
+require_port_available() {
+  local python_bin="$1"
+  local name="$2"
+  local port="$3"
+
+  if port_is_available "${python_bin}" "${port}"; then
+    return
+  fi
+
+  echo "Port ${port} is already in use before starting ${name}." >&2
+  echo "Stop the existing process that owns port ${port}, then rerun ./scripts/bootstrap_local_stack.sh." >&2
+  echo "If this came from a previous repo run, remove stale services first and retry." >&2
+  exit 1
 }
 
 import_sample_data() {
@@ -348,6 +460,13 @@ main() {
 
   mkdir -p "${LOG_DIR}" "${PID_DIR}"
   load_root_env
+  reset_runtime_processes
+  require_port_available "${python_bin}" "auth-service" 7500
+  require_port_available "${python_bin}" "tdms-backend" 7250
+  require_port_available "${python_bin}" "dashboard-backend" 7000
+  require_port_available "${python_bin}" "interface-manager" 8000
+  require_port_available "${python_bin}" "tdms-frontend" 8080
+  require_port_available "${python_bin}" "dashboard-frontend" 3000
 
   start_service "auth-service" \
     "${ROOT_DIR}/src/app/auth_service" \
@@ -367,7 +486,7 @@ main() {
 
   start_service "tdms-frontend" \
     "${ROOT_DIR}/src/app/TDMS/front-end" \
-    npm run dev -- --host 0.0.0.0 --port 8080
+    npm run dev -- --host 0.0.0.0 --port 8080 --strictPort
 
   start_service "dashboard-frontend" \
     "${ROOT_DIR}/src/app/TestCaseExecutorDashboard/front-end" \
@@ -379,8 +498,8 @@ main() {
   wait_for_url "tdms-backend" "http://127.0.0.1:7250/"
   wait_for_url "dashboard-backend" "http://127.0.0.1:7000/docs"
   wait_for_url "interface-manager" "http://127.0.0.1:8000/docs"
-  wait_for_url "tdms-frontend" "http://127.0.0.1:8080"
-  wait_for_url "dashboard-frontend" "http://127.0.0.1:3000"
+  wait_for_html_url "tdms-frontend" "http://127.0.0.1:8080"
+  wait_for_html_url "dashboard-frontend" "http://127.0.0.1:3000"
 
   echo
   echo "Local CeRAI stack is running."
