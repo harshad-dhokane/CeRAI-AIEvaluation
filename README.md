@@ -11,6 +11,7 @@ It combines:
 Full product documentation is available at:
 
 - [AIEvaluationTool docs portal](https://cerai-iitm.github.io/AIEvaluationTool/)
+- [Agriculture evaluation reference](./AGRICULTURE_EVALUATION_REFERENCE.md)
 
 ## Recommended Local Setup
 
@@ -25,6 +26,19 @@ It is the shortest working path because it:
 - creates missing `.env` files from `.env.example`
 - starts the local services
 - runs basic health checks
+
+## Agriculture Evaluation Reference
+
+If you want to re-check the executed agriculture evaluation against the deployed KisanSaathi target, use:
+
+- [AGRICULTURE_EVALUATION_REFERENCE.md](./AGRICULTURE_EVALUATION_REFERENCE.md)
+
+That file documents:
+
+- the deployed KisanSaathi Vercel URLs
+- the exact CeRAI target values used for remote evaluation
+- the minimum CeRAI setup required to rerun the cases
+- where the executed testcase evidence and result interpretations live
 
 ## Quick Start From A Fresh Clone
 

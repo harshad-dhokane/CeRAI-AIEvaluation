@@ -4,6 +4,10 @@ Use this guide to run TDMS and the Test Case Execution Dashboard locally **witho
 
 This page is aligned with the helper scripts that now support a fresh-clone local bring-up.
 
+If you specifically want to re-run the agriculture evaluation against the deployed KisanSaathi target, also use:
+
+- [`AGRICULTURE_EVALUATION_REFERENCE.md`](../../AGRICULTURE_EVALUATION_REFERENCE.md)
+
 ## Recommended Path
 
 From a fresh clone:

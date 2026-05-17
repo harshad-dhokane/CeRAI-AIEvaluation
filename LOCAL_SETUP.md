@@ -4,6 +4,10 @@ This document is the detailed non-Docker setup companion for the repository root
 
 It assumes you want the local TDMS + Dashboard stack to work from a fresh clone without needing to inspect individual sub-apps first.
 
+For the executed agriculture evaluation that used the deployed KisanSaathi target, also refer to:
+
+- [AGRICULTURE_EVALUATION_REFERENCE.md](./AGRICULTURE_EVALUATION_REFERENCE.md)
+
 ## Scope Of This Local Path
 
 This setup targets the local stack that was used successfully for the Option A evaluation workflow:
